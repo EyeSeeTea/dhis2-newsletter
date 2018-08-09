@@ -299,7 +299,7 @@ async function buildNewsletterForUser(i18n, baseNamespace, template, assets, use
     const interpretationIds = new Set(interpretationEvents.map(ev => ev.interpretationId));
 
     const commentEvents = events.filter(event =>
-        event.model === "comment" && interpretationIds.has(event.interpretationId));
+        event.model === "comment" && data.interpretations[event.interpretationId]);
 
     const interpretationEntries = _(interpretationEvents)
         .groupBy(event => event.object.id)
