@@ -17,6 +17,7 @@
       "namespace": "notifications"
     },
     "footer": {
+        "privacyPolicyUrl": "https://www.psi.org/about/privacy-notice/",
         "text": "Population services international (PSI)"
     },
     "smtp": {
