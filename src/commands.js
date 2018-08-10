@@ -6,6 +6,7 @@ const nodemailer = require('nodemailer');
 const ejs = require('ejs');
 const moment = require('moment');
 const child_process = require('child_process');
+const memoize = require('memoizee');
 
 const helpers = require('./helpers');
 const {Dhis2Api} = require('./api');
@@ -17,6 +18,22 @@ const {debug} = helpers;
 const templateSettings = {
     interpolate: /{{([\s\S]+?)}}/g,  /* {{variable}} */
 };
+
+const translations = helpers.loadTranslations(path.join(__dirname, "i18n"));
+
+function _getUserLocale(api, user) {
+    const {username} = user.userCredentials;
+    return api.get(`/userSettings/keyUiLocale?user=${username}`);
+}
+
+const getUserLocale = memoize(_getUserLocale, {promise: true});
+
+async function getI18n(api, user, defaultLocale = "en") {
+    const locale = await getUserLocale(api, user);
+    debug(`Get locale: username=${user.userCredentials.username} -> locale=${locale}`)
+    moment.locale(locale);
+    return translations[locale] || translations[defaultLocale];
+}
 
 function getObjectFromInterpretation(interpretation) {
     const matchingInfo = objectsInfo.find(info => info.type === interpretation.type);
@@ -39,20 +56,31 @@ function getObjectUrl(object, publicUrl) {
     return `${publicUrl}/${object.extraInfo.appPath}/index.html?id=${object.id}`;
 }
 
-function getNotificationMessages(i18n, event, publicUrl, interpretationsById, usersById, interpretationOrComment) {
+async function getNotificationMessages(api, locale, event, publicUrl, interpretationsById, usersById, interpretationOrComment) {
     const interpretation = interpretationsById[event.interpretationId];
     if (!interpretation || !interpretationOrComment)
         return [];
     const text = interpretationOrComment.text;
 
     const interpretationUrl = getInterpretationUrl(interpretation, publicUrl);
-    const getMessageForUser = (userId) => {
-        const user = usersById[userId] || {};
+    const getMessageForUser = async (userId) => {
+        const user = usersById[userId];
+        if (!user) {
+            debug(`User not found: ${userId}`);
+            return null;
+        }
+
+        const i18n = await getI18n(api, user, locale);
         const isSameUser = (interpretationOrComment.user.id === user.id);
+
+        if (!user.email || isSameUser)
+            return null;
+
         const subject = [
             interpretation.user.displayName,
             i18n.t(`${event.model}_${event.type}`),
         ].join(" ");
+
         const bodyText = [
             [
                 interpretation.user.displayName,
@@ -64,13 +92,13 @@ function getNotificationMessages(i18n, event, publicUrl, interpretationsById, us
             text,
         ].join("\n\n");
 
-        return user.email && !isSameUser ? {subject, text: bodyText, recipients: [user.email]} : null;
+        return {subject, text: bodyText, recipients: [user.email]};
     };
 
     const subscribers = interpretation.object.subscribers || [];
     debug(`Object ${interpretation.object.id} subscribers: ${subscribers.join(", ") || "-"}`);
 
-    return _(interpretation.object.subscribers).map(getMessageForUser).compact().value();
+    return _.compact(await helpers.mapPromise(interpretation.object.subscribers, getMessageForUser));
 }
 
 async function getDataForTriggerEvents(api, triggerEvents) {
@@ -100,7 +128,7 @@ async function getDataForTriggerEvents(api, triggerEvents) {
 
     const {users} = await api.get("/users/", {
         paging: false,
-        fields: ["id", "email"].join(","),
+        fields: ["id", "email", "userCredentials[username]"].join(","),
     });
 
     const interpretationsByIdWithObject = _(interpretations)
@@ -248,8 +276,6 @@ function getLikes(i18n, interpretation) {
 
 async function sendNewslettersForEvents(api, triggerEvents, startDate, endDate, options) {
     const {dataStore, publicUrl, smtp, locale, assets} = options;
-    const translations = helpers.loadTranslations(path.join(__dirname, "i18n"));
-    const i18n = translations[locale || "en"];
     const mailer = nodemailer.createTransport(smtp);
     const templatePath = path.join(__dirname, "templates/newsletter.ejs");
     const templateStr = fs.readFileSync(templatePath, "utf8");
@@ -262,31 +288,32 @@ async function sendNewslettersForEvents(api, triggerEvents, startDate, endDate, 
         .map((objs, userId) => ({user: data.users[userId], events: objs.map(obj => obj.event)}))
         .filter(({user}) => user.email)
         .value();
-
-    const baseNamespace = {
-        startDate,
-        endDate,
-        i18n: i18n,
-        footerText: options.footer.text,
-        publicUrl,
-        assetsUrl: assets.url,
-
-        routes: {
-            object: object => getObjectUrl(object, publicUrl),
-            interpretation: interpretation => getInterpretationUrl(interpretation, publicUrl),
-            objectImage: object => getObjectImage(object, publicUrl),
-        },
-        helpers: {
-            _,
-            getObjectVisualization: await getCachedVisualizationFun(api, assets, data.events),
-            getLikes: interpretation => getLikes(i18n, interpretation),
-        },
-    };
-
     return helpers.mapPromise(eventsByUsers, async ({user, events}) => {
+        const i18n = await getI18n(api, user, locale);
+        const baseNamespace = {
+            startDate,
+            endDate,
+            i18n: i18n,
+            privacyPolicyUrl: options.privacyPolicyUrl,
+            footerText: options.footer.text,
+            publicUrl,
+            assetsUrl: assets.url,
+
+            routes: {
+                object: object => getObjectUrl(object, publicUrl),
+                interpretation: interpretation => getInterpretationUrl(interpretation, publicUrl),
+                objectImage: object => getObjectImage(object, publicUrl),
+            },
+            helpers: {
+                _,
+                getObjectVisualization: await getCachedVisualizationFun(api, assets, data.events),
+                getLikes: interpretation => getLikes(i18n, interpretation),
+            },
+        };
+
         const html = await buildNewsletterForUser(i18n, baseNamespace, template, assets, user, events, data);
         const message = {
-            subject: i18n.t("newsletter_title"),
+            subject: i18n.t("newsletter_title") + ` (${moment().format("L")})`,
             recipients: [user.email],
             html,
         };
@@ -342,26 +369,26 @@ function loadConfigOptions(configFile) {
     return JSON.parse(helpers.fileRead(configFile));
 }
 
-async function sendNotificationsForEvents(api, i18n, triggerEvents, options) {
-    const {smtp, publicUrl} = options;
+async function sendNotificationsForEvents(api, triggerEvents, options) {
+    const {smtp, publicUrl, locale} = options;
     const mailer = nodemailer.createTransport(smtp);
 
     const {events, interpretations, users, comments} =
         await getDataForTriggerEvents(api, triggerEvents);
 
-    const messages = _(events).flatMap(event => {
+    const messages = _.flatten(await helpers.mapPromise(events, event => {
         switch (event.model) {
             case "interpretation":
                 const interpretation = interpretations[event.interpretationId];
-                return getNotificationMessages(i18n, event, publicUrl, interpretations, users, interpretation);
+                return getNotificationMessages(api, locale, event, publicUrl, interpretations, users, interpretation);
             case "comment":
                 const comment = comments[event.commentId];
-                return getNotificationMessages(i18n, event, publicUrl, interpretations, users, comment);
+                return getNotificationMessages(api, locale, event, publicUrl, interpretations, users, comment);
             default:
                 debug(`Unknown event model: ${event.model}`)
                 return [];
         }
-    }).value();
+    }));
     debug(`${messages.length} messages to send`);
     await helpers.mapPromise(messages, message => helpers.sendEmail(mailer, message));
 }
@@ -372,8 +399,6 @@ async function sendNotifications(argv) {
     const options = loadConfigOptions(argv.configFile);
     const {api: apiOptions, dataStore, cacheFilePath, locale} = options;
     const api = new Dhis2Api(apiOptions);
-    const translations = helpers.loadTranslations(path.join(__dirname, "i18n"));
-    const i18n = translations[locale || "en"];
     const triggerOptions = {
         cacheFilePath: cacheFilePath,
         namespace: dataStore.namespace,
@@ -382,7 +407,7 @@ async function sendNotifications(argv) {
     };
 
     return getNewTriggerEvents(api, "notifications", triggerOptions, async (triggerEvents) =>
-        sendNotificationsForEvents(api, i18n, triggerEvents, options)
+        sendNotificationsForEvents(api, triggerEvents, options)
     );
 }
 
@@ -390,7 +415,6 @@ async function sendNewsletters(argv) {
     const options = loadConfigOptions(argv.configFile);
     const {cacheFilePath, dataStore, api: apiOptions, locale} = options;
     const api = new Dhis2Api(apiOptions);
-    moment.locale(locale || "en");
     const triggerOptions = {
         cacheFilePath: cacheFilePath,
         namespace: dataStore.namespace,
