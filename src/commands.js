@@ -186,12 +186,13 @@ async function getDataForTriggerEvents(api, triggerEvents) {
 }
 
 async function sendMessagesForEvents(api, cacheKey, options, action) {
-    const {cacheFilePath, namespace, maxTimeWindow, ignoreCache, smtp} = _.defaults(options, {
+    const {cacheFilePath, namespace, maxTimeWindow, ignoreCache, smtp, assets} = _.defaults(options, {
         cacheFilePath: ".notifications-cache.json",
         namespace: "notifications",
         ignoreCache: false,
         maxTimeWindow: [1, "hour"],
-        smtp: null,
+        smtp: {},
+        assets: {},
     });
     const cache = JSON.parse(helpers.fileRead(cacheFilePath, JSON.stringify({})));
     const lastSuccessDate = ignoreCache || !cache[cacheKey] ? null : cache[cacheKey].lastSuccess;
@@ -241,6 +242,11 @@ async function sendMessagesForEvents(api, cacheKey, options, action) {
     };
 
     helpers.fileWrite(cacheFilePath, JSON.stringify(newCache, null, 4) + "\n");
+
+    if (assets.clean) {
+        debug(`Cleanup remote files: ${assets.clean}`);
+        await exec(assets.clean);
+    }
 }
 
 async function _uploadVisualization(api, object, date, assets, imageParams) {
@@ -441,7 +447,7 @@ async function getNotificationMessages(api, triggerEvents, options) {
 
 async function sendNotifications(argv) {
     const options = loadConfigOptions(argv.configFile);
-    const {api: apiOptions, dataStore, cacheFilePath, smtp} = options;
+    const {api: apiOptions, dataStore, cacheFilePath, smtp, assets} = options;
     const api = new Dhis2Api(apiOptions);
     const triggerOptions = {
         cacheFilePath: cacheFilePath,
@@ -449,6 +455,7 @@ async function sendNotifications(argv) {
         ignoreCache: argv.ignoreCache,
         maxTimeWindow: [1, "hour"],
         smtp,
+        assets,
     };
 
     return sendMessagesForEvents(api, "notifications", triggerOptions, ({triggerEvents}) =>
@@ -458,7 +465,7 @@ async function sendNotifications(argv) {
 
 async function sendNewsletters(argv) {
     const options = loadConfigOptions(argv.configFile);
-    const {cacheFilePath, dataStore, api: apiOptions, smtp} = options;
+    const {cacheFilePath, dataStore, api: apiOptions, smtp, assets} = options;
     const api = new Dhis2Api(apiOptions);
     const triggerOptions = {
         cacheFilePath: cacheFilePath,
@@ -466,6 +473,7 @@ async function sendNewsletters(argv) {
         ignoreCache: argv.ignoreCache,
         maxTimeWindow: [7, "days"],
         smtp,
+        assets,
     };
 
     return sendMessagesForEvents(api, "newsletters", triggerOptions, ({triggerEvents, startDate, endDate}) =>
