@@ -26,7 +26,7 @@ function wait(seconds) {
 
 function clearCache(configOptions, key) {
   const startDate = moment();
-  fs.writeFileSync(configOptions.cacheFilePath, JSON.stringify({[key]: startDate}));
+  fs.writeFileSync(configOptions.cacheFilePath, JSON.stringify({[key]: {lastSuccess: startDate}}));
 };
 
 const users = {
@@ -122,7 +122,7 @@ describe("commands", () => {
     it("sends newsletter to subscribers", () => {
       expect(helpers.sendEmail).toBeCalledWith(expect.any(Object), expect.objectContaining({
         "recipients": [users.kamara.email],
-        "subject": "DHIS2 Interpretations Digest",
+        "subject": "DHIS2 Interpretations Digest (08/13/2018)",
       }));
     });
   });
