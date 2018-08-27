@@ -2,7 +2,8 @@
     "locale": "en",
     "assets": {
         "url": "resources",
-        "upload": "cp {{files}} /path/to/build/resources/"
+        "upload": "cp {{files}} /path/to/build/resources/",
+        "clean": "find /path/to/build/resources/ -mtime +30 -exec rm {} +"
     },
     "publicUrl": "http://localhost:8080",
     "cacheFilePath": ".notifications-cache.json",
@@ -17,6 +18,7 @@
       "namespace": "notifications"
     },
     "footer": {
+        "privacyPolicyUrl": "https://www.psi.org/about/privacy-notice/",
         "text": "Population services international (PSI)"
     },
     "smtp": {
