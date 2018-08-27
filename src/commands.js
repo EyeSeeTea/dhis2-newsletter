@@ -43,8 +43,13 @@ function getNotificationMessages(i18n, event, publicUrl, interpretationsById, us
     const interpretation = interpretationsById[event.interpretationId];
     if (!interpretation || !interpretationOrComment)
         return [];
-    const text = interpretationOrComment.text;
 
+    const subscribers = interpretation.object.subscribers || [];
+    debug(`Object ${interpretation.object.id} subscribers: ${subscribers.join(", ") || "-"}`);
+    if (_(subscribers).isEmpty())
+        return [];
+
+    const text = interpretationOrComment.text;
     const interpretationUrl = getInterpretationUrl(interpretation, publicUrl);
     const getMessageForUser = (userId) => {
         const user = usersById[userId] || {};
@@ -67,10 +72,7 @@ function getNotificationMessages(i18n, event, publicUrl, interpretationsById, us
         return user.email && !isSameUser ? {subject, text: bodyText, recipients: [user.email]} : null;
     };
 
-    const subscribers = interpretation.object.subscribers || [];
-    debug(`Object ${interpretation.object.id} subscribers: ${subscribers.join(", ") || "-"}`);
-
-    return _(interpretation.object.subscribers).map(getMessageForUser).compact().value();
+    return _(subscribers).map(getMessageForUser).compact().value();
 }
 
 async function getDataForTriggerEvents(api, triggerEvents) {
@@ -255,13 +257,22 @@ async function sendNewslettersForEvents(api, triggerEvents, startDate, endDate, 
     const templateStr = fs.readFileSync(templatePath, "utf8");
     const template = ejs.compile(templateStr, {filename: templatePath});
     const data = await getDataForTriggerEvents(api, triggerEvents);
+    debug(`${data.events.length} events to process`);
     
     const eventsByUsers = _(data.events)
         .flatMap(event => _(event.object.subscribers).toArray().map(userId => ({userId, event})).value())
         .groupBy("userId")
-        .map((objs, userId) => ({user: data.users[userId], events: objs.map(obj => obj.event)}))
+        .map((objs, userId) => ({
+            user: data.users[userId],
+            events: objs.map(obj => obj.event),
+        }))
         .filter(({user}) => user.email)
         .value();
+
+    if (_(eventsByUsers).isEmpty()) {
+        debug("No subscribers for events");
+        return;
+    }
 
     const baseNamespace = {
         startDate,
