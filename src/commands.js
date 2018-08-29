@@ -343,7 +343,7 @@ async function getNewslettersMessages(api, triggerEvents, startDate, endDate, op
             startDate,
             endDate,
             i18n: i18n,
-            privacyPolicyUrl: options.privacyPolicyUrl,
+            privacyPolicyUrl: options.footer.privacyPolicyUrl,
             footerText: options.footer.text,
             publicUrl,
             assetsUrl: assets.url,
