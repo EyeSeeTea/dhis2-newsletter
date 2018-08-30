@@ -332,7 +332,7 @@ async function getNewslettersMessages(api, triggerEvents, startDate, endDate, op
     const template = ejs.compile(templateStr, {filename: templatePath});
     const data = await getDataForTriggerEvents(api, triggerEvents);
     debug(`${data.events.length} events to process`);
-    
+
     const eventsByUsers = _(data.events)
         .flatMap(event => _(event.object.subscribers).toArray().map(userId => ({userId, event})).value())
         .groupBy("userId")
@@ -344,8 +344,8 @@ async function getNewslettersMessages(api, triggerEvents, startDate, endDate, op
         .value();
 
     if (_(eventsByUsers).isEmpty()) {
-        debug("No subscribers for events");
-        return;
+        debug("No newsletters to send");
+        return Promise.resolve([]);
     }
 
     return helpers.mapPromise(eventsByUsers, async ({user, events}) => {
