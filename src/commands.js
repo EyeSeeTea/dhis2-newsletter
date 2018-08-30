@@ -59,8 +59,13 @@ async function getNotificationMessagesForEvent(api, locale, event, publicUrl, in
     const interpretation = interpretationsById[event.interpretationId];
     if (!interpretation || !interpretationOrComment)
         return [];
-    const text = interpretationOrComment.text;
 
+    const subscribers = interpretation.object.subscribers || [];
+    debug(`Object ${interpretation.object.id} subscribers: ${subscribers.join(", ") || "-"}`);
+    if (_(subscribers).isEmpty())
+        return [];
+
+    const text = interpretationOrComment.text;
     const interpretationUrl = getInterpretationUrl(interpretation, publicUrl);
     const getMessageForUser = async (userId) => {
         const user = usersById[userId];
@@ -102,10 +107,7 @@ async function getNotificationMessagesForEvent(api, locale, event, publicUrl, in
         };
     };
 
-    const subscribers = interpretation.object.subscribers || [];
-    debug(`Object ${interpretation.object.id} subscribers: ${subscribers.join(", ") || "-"}`);
-
-    return _.compact(await helpers.mapPromise(interpretation.object.subscribers, getMessageForUser));
+    return _.compact(await helpers.mapPromise(subscribers, getMessageForUser));
 }
 
 async function getDataForTriggerEvents(api, triggerEvents) {
@@ -329,13 +331,22 @@ async function getNewslettersMessages(api, triggerEvents, startDate, endDate, op
     const templateStr = fs.readFileSync(templatePath, "utf8");
     const template = ejs.compile(templateStr, {filename: templatePath});
     const data = await getDataForTriggerEvents(api, triggerEvents);
-    
+    debug(`${data.events.length} events to process`);
+
     const eventsByUsers = _(data.events)
         .flatMap(event => _(event.object.subscribers).toArray().map(userId => ({userId, event})).value())
         .groupBy("userId")
-        .map((objs, userId) => ({user: data.users[userId], events: objs.map(obj => obj.event)}))
+        .map((objs, userId) => ({
+            user: data.users[userId],
+            events: objs.map(obj => obj.event),
+        }))
         .filter(({user}) => user.email)
         .value();
+
+    if (_(eventsByUsers).isEmpty()) {
+        debug("No newsletters to send");
+        return Promise.resolve([]);
+    }
 
     return helpers.mapPromise(eventsByUsers, async ({user, events}) => {
         const i18n = await getI18n(api, user, locale);
