@@ -26,14 +26,13 @@ function wait(seconds) {
 
 function clearCache(configOptions, key) {
   const startDate = moment();
-  fs.writeFileSync(configOptions.cacheFilePath, JSON.stringify({[key]: startDate}));
+  fs.writeFileSync(configOptions.cacheFilePath, JSON.stringify({[key]: {lastSuccess: startDate}}));
 };
 
 const users = {
   kamara: {
     username: "kamara",
     id: "N3PZBUlN8vq",
-    email: "johnkamara@hmail.com",
   },
 };
 
@@ -79,7 +78,7 @@ describe("commands", () => {
 
     it("sends emails to subscribers on interpretation created", () => {
       expect(helpers.sendEmail).toBeCalledWith(expect.any(Object), expect.objectContaining({
-        "recipients": [users.kamara.email],
+        "recipients": expect.arrayContaining([expect.stringContaining(users.kamara.username)]),
         "subject": "John Traore created an interpretation",
         "text": expect.stringContaining(`/dhis-web-visualizer/index.html?id=R9A0rvAydpn&interpretationid=${interpretations[0].id}`),
       }));
@@ -87,7 +86,7 @@ describe("commands", () => {
 
     it("sends emails to subscribers on comment created", () => {
       expect(helpers.sendEmail).toBeCalledWith(expect.any(Object), expect.objectContaining({
-        "recipients": [users.kamara.email],
+        "recipients": expect.arrayContaining([expect.stringContaining(users.kamara.username)]),
         "subject": "John Traore created an interpretation comment",
         "text": expect.stringContaining(`/dhis-web-visualizer/index.html?id=R9A0rvAydpn&interpretationid=${interpretations[0].id}`),
       }));
@@ -121,8 +120,8 @@ describe("commands", () => {
 
     it("sends newsletter to subscribers", () => {
       expect(helpers.sendEmail).toBeCalledWith(expect.any(Object), expect.objectContaining({
-        "recipients": [users.kamara.email],
-        "subject": "DHIS2 Interpretations Digest",
+        "recipients": expect.arrayContaining([expect.stringContaining(users.kamara.username)]),
+        "subject": "DHIS2 Interpretations Digest (08/13/2018)",
       }));
     });
   });
