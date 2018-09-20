@@ -29,7 +29,8 @@
 
 -- Helpers
 
-CREATE OR REPLACE FUNCTION insert_event(VARIADIC params text[]) RETURNS SETOF keyjsonvalue AS $$
+CREATE OR REPLACE FUNCTION insert_event(type text, model text, interpretationId text, commentId text)
+    RETURNS SETOF keyjsonvalue AS $$
   BEGIN
     DECLARE
       now timestamp := now() at time zone 'utc';
@@ -37,8 +38,13 @@ CREATE OR REPLACE FUNCTION insert_event(VARIADIC params text[]) RETURNS SETOF ke
       namespace varchar := 'notifications';
       bucket_key text := concat('ev-month-', to_char(now, 'YYYY-MM'));
       timestamp_iso8601 text := to_char(now, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"');
-      params_with_timestamp text[] := array_cat(params, Array['created', timestamp_iso8601]);
-      payload jsonb := json_build_object(VARIADIC params_with_timestamp);
+      payload jsonb := json_build_object(
+        'type', type,
+        'model', model,
+        'interpretationId', interpretationId,
+        'commentId', commentId,
+        'created', timestamp_iso8601
+      );
     BEGIN
       INSERT INTO keyjsonvalue (
         keyjsonvalueid,
@@ -70,9 +76,10 @@ $$ LANGUAGE PLPGSQL;
 CREATE OR REPLACE FUNCTION event_interpretation_insert() RETURNS trigger AS $$
   BEGIN
     PERFORM insert_event(
-      'type', 'insert',
-      'model', 'interpretation',
-      'interpretationId', NEW.uid
+      'insert',
+      'interpretation',
+      NEW.uid,
+      NULL
     );
      
     RETURN NEW;
@@ -83,9 +90,10 @@ CREATE OR REPLACE FUNCTION event_interpretation_update() RETURNS trigger AS $$
   BEGIN
     IF NEW.interpretationtext <> OLD.interpretationtext THEN
       PERFORM insert_event(
-        'type', 'update',
-        'model', 'interpretation',
-        'interpretationId', NEW.uid
+        'update',
+        'interpretation',
+        NEW.uid,
+        NULL
       );
     END IF;
      
@@ -122,10 +130,10 @@ CREATE OR REPLACE FUNCTION comment_event(type text, comment_id int) RETURNS keyj
     SELECT INTO comment * FROM interpretationcomment WHERE interpretationcommentid = comment_id LIMIT 1;
 
     RETURN insert_event(
-      'model', 'comment',
-      'type', type,
-      'commentId', comment.uid,
-      'interpretationId', interpretation_uid
+      type,
+      'comment',
+      interpretation_uid,
+      comment.uid
     );
   END
 $$ LANGUAGE PLPGSQL;
