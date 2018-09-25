@@ -99,6 +99,10 @@ function sendEmail(mailer, {subject, text, html, recipients}) {
     return mailer.sendMail({to: recipients, subject, text, html});
 }
 
+function promisify(fn) {
+    return (...args) =>
+        new Promise((resolve, reject) => fn(...args, (err, res) => err ? reject(err) : resolve(res)));
+}
 
 Object.assign(module.exports, {
     debug,
@@ -110,4 +114,5 @@ Object.assign(module.exports, {
     getMonthDatesBetween,
     loadTranslations,
     sendEmail,
+    promisify,
 });

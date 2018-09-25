@@ -12,8 +12,9 @@ const helpers = require('./helpers');
 const {Dhis2Api} = require('./api');
 const {objectsInfo} = require('./objects-info');
 
-const exec = util.promisify(child_process.exec);
-const {debug} = helpers;
+const {promisify, debug} = helpers;
+
+const exec = promisify(child_process.exec);
 
 const templateSettings = {
     interpolate: /{{([\s\S]+?)}}/g,  /* {{variable}} */
@@ -29,7 +30,7 @@ const getUserLocale = memoize(_getUserLocale, {isPromise: true, maxSize: 1000});
 
 async function getI18n(api, user, defaultLocale = "en") {
     const locale = await getUserLocale(api, user.userCredentials.username);
-    debug(`Get user locale ${user.userCredentials.username}: locale=${locale}`)
+    debug(`Get user locale ${user.userCredentials.username}: ${locale}`)
     moment.locale(locale);
     return translations[locale] || translations[defaultLocale];
 }
@@ -77,8 +78,13 @@ async function getNotificationMessagesForEvent(api, locale, event, publicUrl, in
         const i18n = await getI18n(api, user, locale);
         const isSameUser = (interpretationOrComment.user.id === user.id);
 
-        if (!user.email || isSameUser)
+        if (!user.email) {
+            debug(`User has no email: ${user.displayName}`);
             return null;
+        } else if (isSameUser) {
+            debug(`Skip self-notification: ${user.displayName}`);
+            return null;
+        }
 
         const subject = [
             interpretation.user.displayName,
@@ -362,7 +368,7 @@ async function getNewslettersMessages(api, triggerEvents, startDate, endDate, op
             routes: {
                 object: object => getObjectUrl(object, publicUrl),
                 interpretation: interpretation => getInterpretationUrl(interpretation, publicUrl),
-                objectImage: object => getObjectImage(object, publicUrl),
+                //objectImage: object => getObjectImage(object, publicUrl),
             },
             helpers: {
                 _,
