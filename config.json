@@ -3,7 +3,7 @@
     "assets": {
         "url": "resources",
         "upload": "cp {{files}} /path/to/build/resources/",
-        "clean": "find /path/to/build/resources/ -mtime +30 -exec rm {} +"
+        "clean": "find /path/to/build/resources/ -type f -mtime +30 -exec rm {} +"
     },
     "publicUrl": "http://localhost:8080",
     "cacheFilePath": ".notifications-cache.json",
