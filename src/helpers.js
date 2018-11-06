@@ -104,6 +104,13 @@ function promisify(fn) {
         new Promise((resolve, reject) => fn(...args, (err, res) => err ? reject(err) : resolve(res)));
 }
 
+function catchWithDebug(promise, {message, defaultValue}) {
+    return promise.catch(err => {
+        debug(`ERROR: ${message}: ${err}`);
+        return defaultValue;
+    })
+}
+
 Object.assign(module.exports, {
     debug,
     setDebug,
@@ -115,4 +122,5 @@ Object.assign(module.exports, {
     loadTranslations,
     sendEmail,
     promisify,
+    catchWithDebug,
 });
