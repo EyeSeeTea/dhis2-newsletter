@@ -2,7 +2,7 @@ const objectsInfo = [
     {
         type: "MAP",
         field: "map",
-        appPath: "dhis-web-mapping",
+        appPath: "dhis-web-maps",
         visualizationType: "image",
         apiModel: "maps",
     },
