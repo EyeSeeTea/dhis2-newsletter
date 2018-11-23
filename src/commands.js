@@ -12,7 +12,7 @@ const helpers = require('./helpers');
 const {Dhis2Api} = require('./api');
 const {objectsInfo} = require('./objects-info');
 
-const {promisify, debug} = helpers;
+const {promisify, debug, catchWithDebug} = helpers;
 
 const exec = promisify(child_process.exec);
 
@@ -21,6 +21,10 @@ const templateSettings = {
 };
 
 const translations = helpers.loadTranslations(path.join(__dirname, "i18n"));
+
+function getNotificationsAppUrl(publicUrl) {
+    return `${publicUrl}/api/apps/Notifications/index.html`;
+}
 
 async function _getUserSettings(api, username) {
     const userSettings = await api.get(`/userSettings?user=${username}`);
@@ -34,7 +38,7 @@ async function _getUserSettings(api, username) {
 const getUserSettings = memoize(_getUserSettings, {isPromise: true, maxSize: 1000});
 
 async function getI18n(api, user, defaultLocale = "en") {
-    const { locale } = await getUserSettings(api, user.userCredentials.username);
+    const {locale} = await getUserSettings(api, user.userCredentials.username);
     debug(`Get user locale ${user.userCredentials.username}: ${locale}`)
     moment.locale(locale);
     return translations[locale] || translations[defaultLocale];
@@ -61,6 +65,34 @@ function getObjectUrl(object, publicUrl) {
     return `${publicUrl}/${object.extraInfo.appPath}/index.html?id=${object.id}`;
 }
 
+async function userShouldGetNotifications(api, userId, user, interpretationOrComment) {
+    if (!user) {
+        debug(`User not found: ${userId}`);
+        return false;
+    } else {
+        const isSameUser = (interpretationOrComment.user.id === userId);
+        const {username} = user.userCredentials;
+        const {emailNotifications} = await getUserSettings(api, username);
+        const notificationSettings = helpers.getNotificationSettings(user);
+
+        if (!user.email) {
+            debug(`User has no email: ${username}`);
+            return false;
+        } else if (isSameUser) {
+            debug(`Skip self-notification: ${username}`);
+            return false;
+        }  else if (emailNotifications) {
+            debug(`User already receives notifications from DHIS2, skipping: ${username}`);
+            return false;
+        }  else if (notificationSettings.noMentionNotifications) {
+            debug(`User has opted out of mention notications: ${username}`);
+            return false;
+        } else {
+            return true;
+        }
+    }
+}
+
 async function getNotificationMessagesForEvent(api, locale, event, publicUrl, interpretationsById, usersById, interpretationOrComment) {
     const interpretation = interpretationsById[event.interpretationId];
     if (!interpretation || !interpretationOrComment)
@@ -75,26 +107,12 @@ async function getNotificationMessagesForEvent(api, locale, event, publicUrl, in
     const interpretationUrl = getInterpretationUrl(interpretation, publicUrl);
     const getMessageForUser = async (userId) => {
         const user = usersById[userId];
-        if (!user) {
-            debug(`User not found: ${userId}`);
+
+        if (!(await userShouldGetNotifications(api, userId, user, interpretationOrComment))) {
             return null;
         }
 
         const i18n = await getI18n(api, user, locale);
-        const isSameUser = (interpretationOrComment.user.id === user.id);
-        const { username } = user.userCredentials;
-        const { emailNotifications } = await getUserSettings(api, username);
-
-        if (!user.email) {
-            debug(`User has no email: ${username}`);
-            return null;
-        } else if (isSameUser) {
-            debug(`Skip self-notification: ${username}`);
-            return null;
-        }  else if (emailNotifications) {
-            debug(`User already receives notifications from DHIS2, skipping: ${username}`);
-            return null;
-        }
 
         const subject = [
             interpretation.user.displayName,
@@ -110,6 +128,7 @@ async function getNotificationMessagesForEvent(api, locale, event, publicUrl, in
             ].join(" "),
             interpretationUrl,
             text,
+            "---\n" + i18n.t("unsubscribe") + ": " + getNotificationsAppUrl(publicUrl),
         ].join("\n\n");
 
         return {
@@ -151,9 +170,15 @@ async function getDataForTriggerEvents(api, triggerEvents) {
         ].join(","),
     });
 
-    const {users} = await api.get("/users/", {
+    const {users} = await api.get("/users", {
         paging: false,
-        fields: ["id", "displayName", "email", "userCredentials[username]"].join(","),
+        fields: [
+            "id",
+            "displayName",
+            "email",
+            "userCredentials[username]",
+            "attributeValues[value,attribute[code]]",
+        ].join(","),
     });
 
     const interpretationsByIdWithObject = _(interpretations)
@@ -317,7 +342,10 @@ async function getCachedVisualizationFun(api, assets, events) {
     // Build array of objects {args: {object, date}, value: html} for all entries.
     const cachedEntries = await helpers.mapPromise(argsList, async (args) => ({
         args: args,
-        value: await getObjectVisualization(api, assets, args.object, args.date),
+        value: await catchWithDebug(getObjectVisualization(api, assets, args.object, args.date), {
+            message: "getObjectVisualization",
+            defaultValue: `[Cannot get object visualization]`,
+        }),
     }));
 
     return (object, date) => {
@@ -341,6 +369,21 @@ function getLikes(i18n, interpretation) {
     }
 }
 
+function userShouldGetNewsletters(user) {
+    const notificationSettings = helpers.getNotificationSettings(user);
+    const {username} = user.userCredentials;
+
+    if (!user.email) {
+        debug(`User has no email: ${username}`);
+        return false;
+    } else if (notificationSettings.noNewsletters) {
+        debug(`User has opted out of newsletters: ${username}`);
+        return false;
+    } else {
+        return true;
+    }
+}
+
 async function getNewslettersMessages(api, triggerEvents, startDate, endDate, options) {
     const {dataStore, publicUrl, locale, assets} = options;
     const templatePath = path.join(__dirname, "templates/newsletter.ejs");
@@ -356,7 +399,7 @@ async function getNewslettersMessages(api, triggerEvents, startDate, endDate, op
             user: data.users[userId],
             events: objs.map(obj => obj.event),
         }))
-        .filter(({user}) => user.email)
+        .filter(({user}) => userShouldGetNewsletters(user))
         .value();
 
     if (_(eventsByUsers).isEmpty()) {
@@ -370,6 +413,7 @@ async function getNewslettersMessages(api, triggerEvents, startDate, endDate, op
             startDate,
             endDate,
             i18n: i18n,
+            unsubscribeUrl: getNotificationsAppUrl(publicUrl),
             privacyPolicyUrl: options.footer.privacyPolicyUrl,
             footerText: options.footer.text,
             publicUrl,

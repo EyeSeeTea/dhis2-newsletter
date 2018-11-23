@@ -16,6 +16,11 @@ async function main() {
             yargs => yargs, sendNewsletters)
         .demandCommand()
         .strict()
+        .fail((msg, err) => {
+            msg && console.error(msg);
+            err && console.error(err);
+            process.exit(1);
+        })
         .argv;
 }
 
