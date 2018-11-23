@@ -120,6 +120,13 @@ function getNotificationSettings(user) {
         .value();
 }
 
+function catchWithDebug(promise, {message, defaultValue}) {
+    return promise.catch(err => {
+        debug(`ERROR: ${message}: ${err}`);
+        return defaultValue;
+    })
+}
+
 Object.assign(module.exports, {
     debug,
     setDebug,
@@ -132,4 +139,5 @@ Object.assign(module.exports, {
     sendEmail,
     promisify,
     getNotificationSettings,
+    catchWithDebug,
 });

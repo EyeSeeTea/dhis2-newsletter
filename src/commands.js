@@ -12,7 +12,7 @@ const helpers = require('./helpers');
 const {Dhis2Api} = require('./api');
 const {objectsInfo} = require('./objects-info');
 
-const {promisify, debug} = helpers;
+const {promisify, debug, catchWithDebug} = helpers;
 
 const exec = promisify(child_process.exec);
 
@@ -337,7 +337,10 @@ async function getCachedVisualizationFun(api, assets, events) {
     // Build array of objects {args: {object, date}, value: html} for all entries.
     const cachedEntries = await helpers.mapPromise(argsList, async (args) => ({
         args: args,
-        value: await getObjectVisualization(api, assets, args.object, args.date),
+        value: await catchWithDebug(getObjectVisualization(api, assets, args.object, args.date), {
+            message: "getObjectVisualization",
+            defaultValue: `[Cannot get object visualization]`,
+        }),
     }));
 
     return (object, date) => {
