@@ -22,6 +22,10 @@ const templateSettings = {
 
 const translations = helpers.loadTranslations(path.join(__dirname, "i18n"));
 
+function getNotificationsAppUrl(publicUrl) {
+    return `${publicUrl}/api/apps/Notifications/index.html`;
+}
+
 async function _getUserSettings(api, username) {
     const userSettings = await api.get(`/userSettings?user=${username}`);
 
@@ -124,6 +128,7 @@ async function getNotificationMessagesForEvent(api, locale, event, publicUrl, in
             ].join(" "),
             interpretationUrl,
             text,
+            "---\n" + i18n.t("unsubscribe") + ": " + getNotificationsAppUrl(publicUrl),
         ].join("\n\n");
 
         return {
@@ -408,6 +413,7 @@ async function getNewslettersMessages(api, triggerEvents, startDate, endDate, op
             startDate,
             endDate,
             i18n: i18n,
+            unsubscribeUrl: getNotificationsAppUrl(publicUrl),
             privacyPolicyUrl: options.footer.privacyPolicyUrl,
             footerText: options.footer.text,
             publicUrl,
