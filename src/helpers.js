@@ -104,6 +104,22 @@ function promisify(fn) {
         new Promise((resolve, reject) => fn(...args, (err, res) => err ? reject(err) : resolve(res)));
 }
 
+function getNotificationSettings(user) {
+    const attributeCodes = {
+        noMentionNotifications: 'user_noInterpretationMentionNotifications',
+        noNewsletters: 'user_noInterpretationSubcriptionNotifications',
+    };
+
+    const userAttributesValuesByCode = _(user.attributeValues)
+        .map(attributeValue => [attributeValue.attribute.code, attributeValue.value === 'true'])
+        .fromPairs()
+        .value();
+
+    return _(attributeCodes)
+        .mapValues(attributeCode => userAttributesValuesByCode[attributeCode])
+        .value();
+}
+
 function catchWithDebug(promise, {message, defaultValue}) {
     return promise.catch(err => {
         debug(`ERROR: ${message}: ${err}`);
@@ -122,5 +138,6 @@ Object.assign(module.exports, {
     loadTranslations,
     sendEmail,
     promisify,
+    getNotificationSettings,
     catchWithDebug,
 });
