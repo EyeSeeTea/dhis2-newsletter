@@ -23,7 +23,7 @@ const templateSettings = {
 const translations = helpers.loadTranslations(path.join(__dirname, "i18n"));
 
 function getNotificationsAppUrl(publicUrl) {
-    return `${publicUrl}/api/apps/Notifications/index.html`;
+    return `${publicUrl}/api/apps/Notification-Settings/index.html`;
 }
 
 async function _getUserSettings(api, username) {
