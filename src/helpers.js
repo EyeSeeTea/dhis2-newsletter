@@ -1,10 +1,10 @@
 const bluebird = require("bluebird");
 const fs = require("fs");
 const util = require("util");
-const _ = require('lodash');
-const path = require('path');
+const _ = require("lodash");
+const path = require("path");
 const properties = require("properties-file");
-const moment = require('moment');
+const moment = require("moment");
 
 let DEBUG_ENABLED = false;
 
@@ -22,8 +22,8 @@ function setDebug(isEnabled) {
     DEBUG_ENABLED = isEnabled;
 }
 
-function mapPromise(values, mapper, {concurrency = 1} = {}) {
-    return bluebird.map(values, mapper, {concurrency: concurrency});
+function mapPromise(values, mapper, { concurrency = 1 } = {}) {
+    return bluebird.map(values, mapper, { concurrency: concurrency });
 }
 
 function fileRead(path, defaultValue) {
@@ -43,7 +43,7 @@ function fileWrite(path, contents) {
 function sendMessage(api, subject, body, recipients) {
     const recipientsByModel = _(recipients)
         .groupBy("type")
-        .mapValues(models => models.map(model => ({id: model.id})))
+        .mapValues(models => models.map(model => ({ id: model.id })))
         .value();
     const message = {
         subject: subject,
@@ -66,8 +66,8 @@ function getMonthDatesBetween(dateStart, dateEnd) {
     let dates = [];
 
     while (currentDate.isBefore(dateEndOfMonth)) {
-       dates.push(currentDate.clone().startOf('month'));
-       currentDate.add(1, 'month');
+        dates.push(currentDate.clone().startOf("month"));
+        currentDate.add(1, "month");
     }
 
     return dates;
@@ -75,7 +75,7 @@ function getMonthDatesBetween(dateStart, dateEnd) {
 
 function loadTranslations(directory) {
     const templateSettings = {
-        interpolate: /{{([\s\S]+?)}}/g,  /* {{variable}} */
+        interpolate: /{{([\s\S]+?)}}/g /* {{variable}} */,
     };
 
     return _(fs.readdirSync(directory))
@@ -86,7 +86,7 @@ function loadTranslations(directory) {
             const objWithTemplates = _.mapValues(obj, s => _.template(s, templateSettings));
             const t = (key, namespace = {}) =>
                 (objWithTemplates[key] || (() => `**${key}**`))(namespace);
-            const i18nObj = {t, formatDate: date => moment(date).format('L')};
+            const i18nObj = { t, formatDate: date => moment(date).format("L") };
 
             return [locale, i18nObj];
         })
@@ -94,24 +94,26 @@ function loadTranslations(directory) {
         .value();
 }
 
-function sendEmail(mailer, {subject, text, html, recipients}) {
+function sendEmail(mailer, { subject, text, html, recipients }) {
     debug("Send email to " + recipients.join(", ") + ": " + subject);
-    return mailer.sendMail({to: recipients, subject, text, html});
+    return mailer.sendMail({ to: recipients, subject, text, html });
 }
 
 function promisify(fn) {
     return (...args) =>
-        new Promise((resolve, reject) => fn(...args, (err, res) => err ? reject(err) : resolve(res)));
+        new Promise((resolve, reject) =>
+            fn(...args, (err, res) => (err ? reject(err) : resolve(res)))
+        );
 }
 
 function getNotificationSettings(user) {
     const attributeCodes = {
-        noMentionNotifications: 'user_noInterpretationMentionNotifications',
-        noNewsletters: 'user_noInterpretationSubcriptionNotifications',
+        noMentionNotifications: "user_noInterpretationMentionNotifications",
+        noNewsletters: "user_noInterpretationSubcriptionNotifications",
     };
 
     const userAttributesValuesByCode = _(user.attributeValues)
-        .map(attributeValue => [attributeValue.attribute.code, attributeValue.value === 'true'])
+        .map(attributeValue => [attributeValue.attribute.code, attributeValue.value === "true"])
         .fromPairs()
         .value();
 
@@ -120,11 +122,11 @@ function getNotificationSettings(user) {
         .value();
 }
 
-function catchWithDebug(promise, {message, defaultValue}) {
+function catchWithDebug(promise, { message, defaultValue }) {
     return promise.catch(err => {
         debug(`ERROR: ${message}: ${err}`);
         return defaultValue;
-    })
+    });
 }
 
 Object.assign(module.exports, {

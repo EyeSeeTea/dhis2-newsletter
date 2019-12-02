@@ -1,29 +1,32 @@
 const request = require("request-promise");
 const basicAuth = require("basic-authorization-header");
-const { debug } = require('./helpers');
+const { debug } = require("./helpers");
 const util = require("util");
-const { merge } = require('lodash/fp');
+const { merge } = require("lodash/fp");
 
 class Dhis2Api {
     constructor(options) {
-        const {url, auth: {username, password}} = options;
+        const {
+            url,
+            auth: { username, password },
+        } = options;
         this.baseUrl = url;
         this.headers = {
-            "authorization": basicAuth(username, password),
-            "accept": "application/json",
+            authorization: basicAuth(username, password),
+            accept: "application/json",
             "content-type": "application/json",
         };
     }
 
     _getUrl(path) {
-        return this.baseUrl.replace(/\/+$/, '') + "/" + path.replace(/^\/+/, '');
+        return this.baseUrl.replace(/\/+$/, "") + "/" + path.replace(/^\/+/, "");
     }
 
     get(path, params = {}, options = {}) {
         const url = this._getUrl(path);
-        debug(`GET ${url}`);
+        debug(`GET ${url}` + " " + JSON.stringify(params, null, 2));
 
-        return request({
+        const response$ = request({
             method: "GET",
             url: url,
             qs: params,
@@ -31,6 +34,11 @@ class Dhis2Api {
             body: {},
             json: true,
             ...options,
+        });
+
+        return response$.then(res => {
+            debug(`Response size: ${JSON.stringify(res).length}`);
+            return res;
         });
     }
 
