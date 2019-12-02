@@ -158,39 +158,30 @@ async function getDataForTriggerEvents(api, triggerEvents) {
         info => `${info.field}[` + ["id", "name", "subscribers", userField].join(",") + "]"
     );
 
-    const { interpretations } = await api.get("/interpretations/", {
-        paging: false,
-        filter: `id:in:[${interpretationIds.join(",")}]`,
-        fields: [
-            "id",
-            "text",
-            "type",
-            "created",
-            "likes",
-            userField,
-            `comments[id,text,${userField}]`,
-            ...objectModelFields,
-        ].join(","),
-    });
+    const { interpretations } =
+        interpretationIds.length === 0
+            ? { interpretations: [] }
+            : await api.get("/interpretations/", {
+                  paging: false,
+                  filter: `id:in:[${interpretationIds.join(",")}]`,
+                  fields: [
+                      "id",
+                      "text",
+                      "type",
+                      "created",
+                      "likes",
+                      userField,
+                      `comments[id,text,${userField}]`,
+                      ...objectModelFields,
+                  ].join(","),
+              });
 
-    const { users } = await api.get("/users", {
-        paging: false,
-        fields: [
-            "id",
-            "displayName",
-            "email",
-            "userCredentials[username]",
-            "attributeValues[value,attribute[code]]",
-        ].join(","),
-    });
+    const interpretationsWithObject = interpretations.map(interpretation => ({
+        ...interpretation,
+        object: getObjectFromInterpretation(interpretation),
+    }));
 
-    const interpretationsByIdWithObject = _(interpretations)
-        .map(interpretation => ({
-            ...interpretation,
-            object: getObjectFromInterpretation(interpretation),
-        }))
-        .keyBy("id")
-        .value();
+    const interpretationsByIdWithObject = _.keyBy(interpretationsWithObject, "id");
 
     const commentsById = _(interpretations)
         .flatMap("comments")
@@ -231,6 +222,28 @@ async function getDataForTriggerEvents(api, triggerEvents) {
             };
         })
         .value();
+
+    const userIds = _.uniq(
+        _.concat(
+            _.flatMap(events, event => event.object.subscribers),
+            _.flatMap(interpretationsWithObject, interp => interp.object.subscribers)
+        )
+    );
+
+    const { users } =
+        userIds.length === 0
+            ? { users: [] }
+            : await api.get("/users", {
+                  paging: false,
+                  filter: `id:in:[${userIds.join(",")}]`,
+                  fields: [
+                      "id",
+                      "displayName",
+                      "email",
+                      "userCredentials[username]",
+                      "attributeValues[value,attribute[code]]",
+                  ].join(","),
+              });
 
     return {
         events: events,

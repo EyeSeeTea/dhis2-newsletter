@@ -24,9 +24,9 @@ class Dhis2Api {
 
     get(path, params = {}, options = {}) {
         const url = this._getUrl(path);
-        debug(`GET ${url}`);
+        debug(`GET ${url}` + " " + JSON.stringify(params, null, 2));
 
-        return request({
+        const response$ = request({
             method: "GET",
             url: url,
             qs: params,
@@ -34,6 +34,11 @@ class Dhis2Api {
             body: {},
             json: true,
             ...options,
+        });
+
+        return response$.then(res => {
+            debug(`Response size: ${JSON.stringify(res).length}`);
+            return res;
         });
     }
 
