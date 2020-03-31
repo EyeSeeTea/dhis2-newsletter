@@ -36,4 +36,4 @@ const objectsInfo = [
     },
 ];
 
-module.exports = {objectsInfo};
+module.exports = { objectsInfo };
