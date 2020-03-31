@@ -4,3 +4,4 @@ config-*.json
 bak/
 build/
 node_modules/
+.vscode/
