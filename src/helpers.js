@@ -26,6 +26,10 @@ function mapPromise(values, mapper, { concurrency = 1 } = {}) {
     return bluebird.map(values, mapper, { concurrency: concurrency });
 }
 
+function loadConfigOptions(configFile) {
+    return JSON.parse(fileRead(configFile));
+}
+
 function fileRead(path, defaultValue) {
     if (fs.existsSync(path)) {
         return fs.readFileSync(path, "utf8");
@@ -133,6 +137,7 @@ Object.assign(module.exports, {
     debug,
     setDebug,
     mapPromise,
+    loadConfigOptions,
     fileRead,
     fileWrite,
     sendMessage,

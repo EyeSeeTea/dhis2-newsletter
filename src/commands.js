@@ -12,6 +12,8 @@ const helpers = require("./helpers");
 const { Dhis2Api } = require("./api");
 const { objectsInfo } = require("./objects-info");
 
+const { LastExecutionsRepository } = require("./data/lastExecutionsRepository");
+
 const { promisify, debug, catchWithDebug } = helpers;
 
 const exec = promisify(child_process.exec);
@@ -270,7 +272,8 @@ async function sendMessagesForEvents(api, cacheKey, options, action) {
             assets: {},
         }
     );
-    const cache = JSON.parse(helpers.fileRead(cacheFilePath, JSON.stringify({})));
+    const lastExecutionsRepository = new LastExecutionsRepository(cacheFilePath);
+    const cache = lastExecutionsRepository.get();
     const lastSuccessDate = ignoreCache || !cache[cacheKey] ? null : cache[cacheKey].lastSuccess;
     const lastEventDateForUserByUser =
         ignoreCache || !cache[cacheKey] ? {} : cache[cacheKey].users || {};
@@ -330,7 +333,7 @@ async function sendMessagesForEvents(api, cacheKey, options, action) {
         },
     };
 
-    helpers.fileWrite(cacheFilePath, JSON.stringify(newCache, null, 4) + "\n");
+    lastExecutionsRepository.save(newCache);
 
     if (assets.clean) {
         debug(`Cleanup remote files: ${assets.clean}`);
@@ -566,10 +569,6 @@ async function buildNewsletterForUser(i18n, baseNamespace, template, assets, use
     return template(namespace);
 }
 
-function loadConfigOptions(configFile) {
-    return JSON.parse(helpers.fileRead(configFile));
-}
-
 async function getNotificationMessages(api, triggerEvents, options) {
     const { publicUrl, locale } = options;
 
@@ -614,7 +613,7 @@ async function getNotificationMessages(api, triggerEvents, options) {
 /* Main functions */
 
 async function sendNotifications(argv) {
-    const options = loadConfigOptions(argv.configFile);
+    const options = helpers.loadConfigOptions(argv.configFile);
     const { api: apiOptions, dataStore, cacheFilePath, smtp, assets } = options;
     const api = new Dhis2Api(apiOptions);
     const triggerOptions = {
@@ -632,7 +631,7 @@ async function sendNotifications(argv) {
 }
 
 async function sendNewsletters(argv) {
-    const options = loadConfigOptions(argv.configFile);
+    const options = helpers.loadConfigOptions(argv.configFile);
     const { cacheFilePath, dataStore, api: apiOptions, smtp, assets } = options;
     const api = new Dhis2Api(apiOptions);
     const triggerOptions = {
