@@ -143,6 +143,14 @@ function catchWithDebug(promise, { message, defaultValue }) {
     });
 }
 
+function dhisDateToISODate(date) {
+    return `${date}Z`;
+}
+
+function isoDateToDhisDate(date) {
+    return date.replace("Z", "");
+}
+
 Object.assign(module.exports, {
     debug,
     setDebug,
@@ -157,4 +165,6 @@ Object.assign(module.exports, {
     promisify,
     getNotificationSettings,
     catchWithDebug,
+    dhisDateToISODate,
+    isoDateToDhisDate,
 });
