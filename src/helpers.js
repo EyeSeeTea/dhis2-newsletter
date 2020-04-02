@@ -41,7 +41,17 @@ function fileRead(path, defaultValue) {
 }
 
 function fileWrite(path, contents) {
+    ensureDirectoryExistence(path);
     return fs.writeFileSync(path, contents, "utf8");
+}
+
+function ensureDirectoryExistence(filePath) {
+    var dirname = path.dirname(filePath);
+    if (fs.existsSync(dirname)) {
+        return true;
+    }
+    ensureDirectoryExistence(dirname);
+    fs.mkdirSync(dirname);
 }
 
 function sendMessage(api, subject, body, recipients) {
