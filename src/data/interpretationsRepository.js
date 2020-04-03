@@ -4,7 +4,7 @@ const helpers = require("../helpers");
 class InterpretationsRepository {
     constructor(api) {
         this.api = api;
-        this.interpretationsCacheFilePath = "./cache/interpretations/interpretations.json";
+        this.cacheFilePath = "./cache/interpretations.json";
     }
 
     async getFromAPI(dateFilter) {
@@ -24,14 +24,11 @@ class InterpretationsRepository {
     }
 
     getFromCache() {
-        return JSON.parse(helpers.fileRead(this.interpretationsCacheFilePath, JSON.stringify([])));
+        return JSON.parse(helpers.fileRead(this.cacheFilePath, JSON.stringify([])));
     }
 
     saveToCache(interpretations) {
-        helpers.fileWrite(
-            this.interpretationsCacheFilePath,
-            JSON.stringify(interpretations, null, 4) + "\n"
-        );
+        helpers.fileWrite(this.cacheFilePath, JSON.stringify(interpretations, null, 4) + "\n");
     }
 }
 
