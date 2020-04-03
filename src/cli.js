@@ -2,6 +2,7 @@
 const yargs = require("yargs");
 const helpers = require("./helpers");
 const { sendNotifications, sendNewsletters } = require("./commands");
+const { generateEvents } = require("./generateEventsCommand");
 
 async function main() {
     helpers.setDebug(true);
@@ -10,6 +11,12 @@ async function main() {
         .help("help", "Display this help message and exit")
         .option("config-file", { alias: "c", type: "string", default: "config.json" })
         .option("ignore-cache", { type: "boolean", default: false })
+        .command(
+            "generate-events",
+            "Detect and generate in cache change events of interpretations and comments",
+            yargs => yargs,
+            generateEvents
+        )
         .command(
             "send-notifications",
             "Send e-mail notifications on recent activity to subscribers",
