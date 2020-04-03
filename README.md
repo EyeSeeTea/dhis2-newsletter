@@ -2,12 +2,6 @@
 
 ## Setup
 
-* Install the PostgreSQL triggers that create an event whenever an interpretation/comment is created/edited:
-
-```
-$ cat database/triggers.sql | psql DATABASE_NAME [-U USER]
-```
-
 * Build the assets:
 
 ```
@@ -32,7 +26,10 @@ $ which dhis2-subscriptions
 * Add crontab entries (`crontab -e`) to send notifications and newsletters to subscribers. An example:
 
 ```
-*/5 * * * *   chronic /path/to/bin/dhis2-subscriptions --config-file=/path/to/your/config.json send-notifications
+*/5 * * * *   chronic /path/to/bin/dhis2-subscriptions --config-file=/path/to/your/config.json generate-events
+
+*/8 * * * *   chronic /path/to/bin/dhis2-subscriptions --config-file=/path/to/your/config.json send-notifications
+
 00  8 * * MON chronic /path/to/bin/dhis2-subscriptions --config-file=/path/to/your/config.json send-newsletters
 ```
 
@@ -65,11 +62,6 @@ $ which dhis2-subscriptions
         }
     },
 
-    // DHIS2 dataStore details where events are stored
-    "dataStore": {
-      "namespace": "notifications"
-    },
-
     // E-mail footer literals
     "footer": {
         "text": "Population services international (PSI)"
@@ -88,6 +80,12 @@ $ which dhis2-subscriptions
 ```
 
 ## Commands examples
+
+Detect changes in interpretations and its comments for objects (charts, eventCharts, maps, reportTables, eventReports):
+
+```
+$ dhis2-subscriptions [-c path/to/config.json] generate-events
+```
 
 Send emails to subscribers of objects (charts, eventCharts, maps, reportTables, eventReports):
 
