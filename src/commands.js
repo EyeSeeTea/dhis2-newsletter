@@ -12,6 +12,7 @@ const helpers = require("./helpers");
 const { Dhis2Api } = require("./api");
 const { objectsInfo } = require("./objects-info");
 
+const { EventsRepository } = require("./data/eventsRepository");
 const { LastExecutionsRepository } = require("./data/lastExecutionsRepository");
 
 const { promisify, debug, catchWithDebug } = helpers;
@@ -286,9 +287,9 @@ async function sendMessagesForEvents(api, cacheKey, options, action) {
 
     debug(`startDate=${startDate}, endDate=${endDate}`);
     const buckets = helpers.getMonthDatesBetween(startDate, endDate).map(getBucketFromTime);
-    const eventsInBuckets = await helpers.mapPromise(buckets, bucket =>
-        api.get(`/dataStore/${namespace}/${bucket}`).catch(err => [])
-    );
+    const eventsRepository = new EventsRepository();
+    const eventsInBuckets = buckets.map(bucket => eventsRepository.get(bucket));
+
     const triggerEvents = _(eventsInBuckets)
         .flatten()
         .filter(event => moment(event.created) >= startDate && moment(event.created) < endDate)
@@ -446,7 +447,7 @@ function userShouldGetNewsletters(user) {
 }
 
 async function getNewslettersMessages(api, triggerEvents, startDate, endDate, options) {
-    const { dataStore, publicUrl, locale, assets } = options;
+    const { publicUrl, locale, assets } = options;
     const templatePath = path.join(__dirname, "templates/newsletter.ejs");
     const templateStr = fs.readFileSync(templatePath, "utf8");
     const template = ejs.compile(templateStr, { filename: templatePath });
@@ -614,11 +615,10 @@ async function getNotificationMessages(api, triggerEvents, options) {
 
 async function sendNotifications(argv) {
     const options = helpers.loadConfigOptions(argv.configFile);
-    const { api: apiOptions, dataStore, cacheFilePath, smtp, assets } = options;
+    const { api: apiOptions, cacheFilePath, smtp, assets } = options;
     const api = new Dhis2Api(apiOptions);
     const triggerOptions = {
         cacheFilePath: cacheFilePath,
-        namespace: dataStore.namespace,
         ignoreCache: argv.ignoreCache,
         maxTimeWindow: [1, "hour"],
         smtp,
@@ -632,11 +632,10 @@ async function sendNotifications(argv) {
 
 async function sendNewsletters(argv) {
     const options = helpers.loadConfigOptions(argv.configFile);
-    const { cacheFilePath, dataStore, api: apiOptions, smtp, assets } = options;
+    const { cacheFilePath, api: apiOptions, smtp, assets } = options;
     const api = new Dhis2Api(apiOptions);
     const triggerOptions = {
         cacheFilePath: cacheFilePath,
-        namespace: dataStore.namespace,
         ignoreCache: argv.ignoreCache,
         maxTimeWindow: [7, "days"],
         smtp,
