@@ -23,7 +23,15 @@ class GenerateEventsUseCase {
         if (isFirstTime) {
             this.interpretationsRepository.saveToCache(interpretationsFromAPI);
         } else if (interpretationsFromAPI.length > 0) {
-            this._updateEventsAndInterpretations(interpretationsFromCache, interpretationsFromAPI);
+            const events = this._generateEvents(interpretationsFromCache, interpretationsFromAPI);
+            const interpretations = this._generateChangesInInterpretations(
+                interpretationsFromCache,
+                interpretationsFromAPI,
+                events
+            );
+
+            this.eventsRepository.save(events);
+            this.interpretationsRepository.saveToCache(interpretations);
         }
 
         this._saveLastExecution();
@@ -53,39 +61,28 @@ class GenerateEventsUseCase {
         this.lastExecutionsRepository.save(newLastExecutions);
     }
 
-    _updateEventsAndInterpretations(cachedInterpretations, interpretationsChanges) {
-        const newEvents = this._generateEvents(cachedInterpretations, interpretationsChanges);
-
+    _generateChangesInInterpretations(cachedInterpretations, interpretationsChanges, newEvents) {
         const createdInterpretations = newEvents
             .filter(newEvent => newEvent.type === "insert" && newEvent.model === "interpretation")
-            .map(newEvent =>
-                interpretationsChanges.find(
-                    interpretationChange => interpretationChange.id === newEvent.interpretationId
-                )
-            );
+            .map(newEvent => _.find(interpretationsChanges, { id: newEvent.interpretationId }));
 
         const editedInterpretations = _.uniqBy(
             newEvents
                 .filter(
                     newEvent => !(newEvent.type === "insert" && newEvent.model === "interpretation")
                 )
-                .map(newEvent =>
-                    interpretationsChanges.find(
-                        interpretationChange =>
-                            interpretationChange.id === newEvent.interpretationId
-                    )
-                ),
+                .map(newEvent => _.find(interpretationsChanges, { id: newEvent.interpretationId })),
             "id"
         );
+
         const interpretationsToSave = [
             ...cachedInterpretations.map(
-                old => editedInterpretations.find(edited => edited.id === old.id) || old
+                old => _.find(editedInterpretations, { id: old.id }) || old
             ),
             ...createdInterpretations,
         ];
 
-        this.interpretationsRepository.saveToCache(interpretationsToSave);
-        this.eventsRepository.save(newEvents);
+        return interpretationsToSave;
     }
 
     _generateEvents(cachedInterpretations, interpretationsChanges) {
@@ -121,10 +118,7 @@ class GenerateEventsUseCase {
 
     _generateCreateInterpretationsEvents(cachedInterpretations, interpretationsChanges) {
         const createdInterpretations = interpretationsChanges.filter(
-            interpretationChange =>
-                !cachedInterpretations.some(
-                    cachedInterpretation => cachedInterpretation.id === interpretationChange.id
-                )
+            interpretationChange => !_.some(cachedInterpretations, { id: interpretationChange.id })
         );
 
         return createdInterpretations.map(interpretation => {
@@ -159,100 +153,59 @@ class GenerateEventsUseCase {
     }
 
     _generateCreateCommentsEvents(cachedInterpretations, interpretationsChanges) {
-        const interpretationsChangesWithNewComments = interpretationsChanges.filter(
-            interpretationChange =>
-                cachedInterpretations.some(
-                    cachedInterpretation =>
-                        cachedInterpretation.id === interpretationChange.id &&
-                        //TODO: review this
-                        !_.isEqual(
-                            _.sortBy(cachedInterpretation.comments.map(c => c.id)),
-                            _.sortBy(interpretationChange.comments.map(c => c.id))
-                        )
-                )
-        );
-        return interpretationsChangesWithNewComments.reduce(
-            (events, interpretationWithNewComments) => {
-                const editedCachedInterpretation = cachedInterpretations.find(
-                    cachedInterpretation =>
-                        cachedInterpretation.id === interpretationWithNewComments.id
-                );
+        const cachedComments = this._extractComments(cachedInterpretations);
+        const commentChanges = this._extractComments(interpretationsChanges);
 
-                const createdCommentEvents = interpretationWithNewComments.comments
-                    .filter(
-                        comment =>
-                            !editedCachedInterpretation.comments.some(
-                                cachedComment => cachedComment.id === comment.id
-                            )
-                    )
-                    .map(comment => {
-                        return {
-                            type: "insert",
-                            model: "comment",
-                            created: helpers.dhisDateToISODate(comment.lastUpdated),
-                            commentId: comment.id,
-                            interpretationId: interpretationWithNewComments.id,
-                        };
-                    });
-
-                return [...events, ...createdCommentEvents];
-            },
-            []
+        const createdComments = commentChanges.filter(
+            commentChange => !_.some(cachedComments, { id: commentChange.id })
         );
+
+        return createdComments.map(comment => {
+            return {
+                type: "insert",
+                model: "comment",
+                created: helpers.dhisDateToISODate(comment.lastUpdated),
+                commentId: comment.id,
+                interpretationId: comment.interpretationId,
+            };
+        });
     }
 
     _generateEditedCommentsEvents(cachedInterpretations, interpretationsChanges) {
-        const hasEditedComents = (interpretationWithChanges, cachedInterpretation) =>
-            interpretationWithChanges.comments.filter(commentOfInterpretationChange =>
-                cachedInterpretation.comments.some(
-                    commentOfcachedInterpretation =>
-                        commentOfInterpretationChange.id === commentOfcachedInterpretation.id &&
-                        commentOfInterpretationChange.text !== commentOfcachedInterpretation.text
-                )
-            ).length > 0;
+        const cachedComments = this._extractComments(cachedInterpretations);
+        const commentChanges = this._extractComments(interpretationsChanges);
 
-        const interpretationsChangesWithEditedComments = interpretationsChanges.filter(
-            interpretationWithChanges =>
-                cachedInterpretations.some(
-                    cachedInterpretation =>
-                        cachedInterpretation.id === interpretationWithChanges.id &&
-                        hasEditedComents(interpretationWithChanges, cachedInterpretation)
-                )
+        const editedComments = commentChanges.filter(commentChange =>
+            cachedComments.some(
+                cachedComment =>
+                    cachedComment.id === commentChange.id &&
+                    cachedComment.text !== commentChange.text
+            )
         );
 
-        return interpretationsChangesWithEditedComments.reduce(
-            (events, interpretationWithEditedComments) => {
-                const editedCachedInterpretation = cachedInterpretations.find(
-                    cachedInterpretation =>
-                        cachedInterpretation.id === interpretationWithEditedComments.id
-                );
+        return editedComments.map(comment => {
+            return {
+                type: "update",
+                model: "comment",
+                created: helpers.dhisDateToISODate(comment.interpretationLastUpdated),
+                commentId: comment.id,
+                interpretationId: comment.interpretationId,
+            };
+        });
+    }
 
-                const editedCommentEvents = interpretationWithEditedComments.comments
-                    .filter(comment =>
-                        editedCachedInterpretation.comments.some(
-                            cachedComment =>
-                                cachedComment.id === comment.id &&
-                                cachedComment.text !== comment.text
-                        )
-                    )
-                    .map(comment => {
-                        return {
-                            type: "update",
-                            model: "comment",
-                            //TODO: set interpretations  date because dhis2 does not update comment las updated
-                            //when a comment is edited
-                            created: helpers.dhisDateToISODate(
-                                interpretationWithEditedComments.lastUpdated
-                            ),
-                            commentId: comment.id,
-                            interpretationId: interpretationWithEditedComments.id,
-                        };
-                    });
-
-                return [...events, ...editedCommentEvents];
-            },
-            []
+    _extractComments(interpretations) {
+        const comments = interpretations.map(interpretation =>
+            interpretation.comments.map(comment => {
+                return {
+                    ...comment,
+                    interpretationId: interpretation.id,
+                    interpretationLastUpdated: interpretation.lastUpdated,
+                };
+            })
         );
+
+        return _.flatten(comments);
     }
 }
 

@@ -6,6 +6,7 @@ var {
     FakeInterpretationsRepository,
     FakeEventsRepository,
 } = require("../../data/fakes");
+const _ = require("lodash");
 
 let fakeLastExecutionsRepository;
 let fakeInterpretationsRepository;
@@ -215,13 +216,52 @@ describe("generateEventsUseCase", () => {
                 )
             );
         });
-        it("should save lastExecution date in cache if generate events", async () => {
-            givenANextTimeWithCreateCommentsChanges();
+        it("should generate interpretations and comments create events if interpretations with comment has been created", async () => {
+            const {
+                newInterpretationsWithNewComment,
+            } = givenANextTimeWithCreateInterpretationAndCommentsChanges();
+            const previousCachedEvents = fakeEventsRepository.get();
+
             await generateEventsUseCase.execute({ ignoreCache: false });
-            const lastSuccess = moment(
-                fakeLastExecutionsRepository.get().getEvents.lastSuccess
-            ).toISOString();
-            expect(moment().isSame(lastSuccess, "second")).toBe(true);
+
+            const newInterpretationEvents = newInterpretationsWithNewComment.map(interpretation => {
+                return {
+                    type: "insert",
+                    model: "interpretation",
+                    created: helpers.dhisDateToISODate(interpretation.lastUpdated),
+                    commentId: null,
+                    interpretationId: interpretation.id,
+                };
+            });
+
+            const newCommentsEvents = _.flatten(
+                newInterpretationsWithNewComment.map(interpretation =>
+                    interpretation.comments.map(comment => {
+                        return {
+                            type: "insert",
+                            model: "comment",
+                            created: helpers.dhisDateToISODate(comment.lastUpdated),
+                            commentId: comment.id,
+                            interpretationId: interpretation.id,
+                        };
+                    })
+                )
+            ).values();
+
+            const cachedEvents = fakeEventsRepository.get();
+            expect(cachedEvents).toEqual([
+                ...previousCachedEvents,
+                ...newInterpretationEvents,
+                ...newCommentsEvents,
+            ]);
+        });
+        it("should save lastExecution date in cache if generate events", async () => {
+            // givenANextTimeWithCreateCommentsChanges();
+            // await generateEventsUseCase.execute({ ignoreCache: false });
+            // const lastSuccess = moment(
+            //     fakeLastExecutionsRepository.get().getEvents.lastSuccess
+            // ).toISOString();
+            // expect(moment().isSame(lastSuccess, "second")).toBe(true);
         });
     });
 });
@@ -265,20 +305,14 @@ function givenANextTimeWithCreateInterpretationsChanges() {
     fakeInterpretationsRepository.interpretationsFromCache =
         fakeInterpretationsRepository.interpretationsTemplate;
 
-    fakeInterpretationsRepository.interpretationsFromAPI = [
-        {
+    fakeInterpretationsRepository.interpretationsFromAPI = [1, 2].map(index => {
+        return {
             lastUpdated: helpers.isoDateToDhisDate(moment().toISOString()),
-            id: "newUID",
-            text: "new interpretation",
+            id: `newUID ${index}`,
+            text: `new interpretation ${index}`,
             comments: [],
-        },
-        {
-            lastUpdated: helpers.isoDateToDhisDate(moment().toISOString()),
-            id: "newUID 2",
-            text: "new interpretation 2",
-            comments: [],
-        },
-    ];
+        };
+    });
 
     fakeEventsRepository = new FakeEventsRepository();
     generateEventsUseCase = new GenerateEventsUseCase(
@@ -326,18 +360,13 @@ function givenANextTimeWithCreateCommentsChanges() {
     fakeInterpretationsRepository.interpretationsFromCache =
         fakeInterpretationsRepository.interpretationsTemplate;
 
-    const newComments = [
-        {
+    const newComments = [1, 2].map(index => {
+        return {
             lastUpdated: helpers.isoDateToDhisDate(moment().toISOString()),
-            id: "newUID",
-            text: "new comment",
-        },
-        {
-            lastUpdated: helpers.isoDateToDhisDate(moment().toISOString()),
-            id: "newUID 2",
-            text: "new comment 2",
-        },
-    ];
+            id: `newUID ${index}`,
+            text: `new comment ${index}`,
+        };
+    });
 
     fakeInterpretationsRepository.interpretationsFromAPI = fakeInterpretationsRepository.interpretationsFromCache.map(
         interpretation => {
@@ -385,6 +414,41 @@ function givenANextTimeWithEditedCommentsChanges() {
 
     return {
         interpretationsWithEditedComments: fakeInterpretationsRepository.interpretationsFromAPI,
+    };
+}
+
+function givenANextTimeWithCreateInterpretationAndCommentsChanges() {
+    createdPreviousExecutionInCache();
+
+    fakeInterpretationsRepository = new FakeInterpretationsRepository();
+
+    fakeInterpretationsRepository.interpretationsFromCache =
+        fakeInterpretationsRepository.interpretationsTemplate;
+
+    fakeInterpretationsRepository.interpretationsFromAPI = [1, 2].map(index => {
+        return {
+            lastUpdated: helpers.isoDateToDhisDate(moment().toISOString()),
+            id: `newUID ${index}`,
+            text: `new interpretation ${index}`,
+            comments: [1, 2].map(index => {
+                return {
+                    lastUpdated: helpers.isoDateToDhisDate(moment().toISOString()),
+                    id: `newUID ${index}`,
+                    text: `new comment ${index}`,
+                };
+            }),
+        };
+    });
+
+    fakeEventsRepository = new FakeEventsRepository();
+    generateEventsUseCase = new GenerateEventsUseCase(
+        fakeLastExecutionsRepository,
+        fakeInterpretationsRepository,
+        fakeEventsRepository
+    );
+
+    return {
+        newInterpretationsWithNewComment: fakeInterpretationsRepository.interpretationsFromAPI,
     };
 }
 
