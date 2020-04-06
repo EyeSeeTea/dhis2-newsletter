@@ -256,12 +256,12 @@ describe("generateEventsUseCase", () => {
             ]);
         });
         it("should save lastExecution date in cache if generate events", async () => {
-            // givenANextTimeWithCreateCommentsChanges();
-            // await generateEventsUseCase.execute({ ignoreCache: false });
-            // const lastSuccess = moment(
-            //     fakeLastExecutionsRepository.get().getEvents.lastSuccess
-            // ).toISOString();
-            // expect(moment().isSame(lastSuccess, "second")).toBe(true);
+            givenANextTimeWithCreateCommentsChanges();
+            await generateEventsUseCase.execute({ ignoreCache: false });
+            const lastSuccess = moment(
+                fakeLastExecutionsRepository.get().getEvents.lastSuccess
+            ).toISOString();
+            expect(moment().isSame(lastSuccess, "second")).toBe(true);
         });
     });
 });
