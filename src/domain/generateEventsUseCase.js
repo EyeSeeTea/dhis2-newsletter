@@ -172,6 +172,30 @@ const generateEvents = (cachedInterpretations, interpretationsChanges) => {
         .value();
 };
 
+const printEvents = (events) => {
+    if (events.length > 0) {
+        helpers.debug("Changes in interpretations or comments have been found:");
+        helpers.debug(
+            `New interpretations: ${
+                _.filter(events, { type: "insert", model: "interpretation" }).length
+            }`
+        );
+        helpers.debug(
+            `Edit interpretations: ${
+                _.filter(events, { type: "update", model: "interpretation" }).length
+            }`
+        );
+        helpers.debug(
+            `New comments: ${_.filter(events, { type: "insert", model: "comment" }).length}`
+        );
+        helpers.debug(
+            `Edit comments: ${_.filter(events, { type: "update", model: "comment" }).length}`
+        );
+    } else {
+        helpers.debug("Changes in interpretations or comments have not been found");
+    }
+};
+
 class GenerateEventsUseCase {
     constructor(lastExecutionsRepository, interpretationsRepository, eventsRepository) {
         this.lastExecutionsRepository = lastExecutionsRepository;
@@ -191,6 +215,7 @@ class GenerateEventsUseCase {
 
         if (isFirstTime) {
             this.interpretationsRepository.saveToCache(interpretationsFromAPI);
+            helpers.debug("First execution, interpretations have been cached");
         } else if (interpretationsFromAPI.length > 0) {
             const events = generateEvents(interpretationsFromCache, interpretationsFromAPI);
             const interpretations = generateChangesInInterpretations(
@@ -201,7 +226,11 @@ class GenerateEventsUseCase {
 
             this.eventsRepository.save(events);
             this.interpretationsRepository.saveToCache(interpretations);
-        } 
+
+            printEvents(events);
+        } else {
+            printEvents([]);
+        }
 
         const updatedLastExecutions = generateLastExecutions(this.lastExecutionsRepository.get());
         this.lastExecutionsRepository.save(updatedLastExecutions);
