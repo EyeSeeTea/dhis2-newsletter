@@ -1,4 +1,3 @@
-.notifications-cache*.json
 config-*.json
 .npmignore
 bak/

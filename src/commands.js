@@ -265,7 +265,7 @@ async function sendMessagesForEvents(api, cacheKey, options, action) {
     const { cacheFilePath, namespace, maxTimeWindow, ignoreCache, smtp, assets } = _.defaults(
         options,
         {
-            cacheFilePath: ".notifications-cache.json",
+            cacheFilePath: "./cache/lastExecutions.json",
             namespace: "notifications",
             ignoreCache: false,
             maxTimeWindow: [1, "hour"],

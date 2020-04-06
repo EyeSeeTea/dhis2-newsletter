@@ -6,7 +6,7 @@
         "clean": "find /path/to/build/resources/ -type f -mtime +30 -exec rm {} +"
     },
     "publicUrl": "http://localhost:8080",
-    "cacheFilePath": ".notifications-cache.json",
+    "cacheFilePath": "./cache/lastExecutions.json",
     "api": {
         "url": "http://localhost:8080/api/",
         "auth": {
