@@ -17,13 +17,13 @@ describe("generateEventsUseCase", () => {
     describe("first time", () => {
         it("should get interpretations to API with null date filter", async () => {
             givenAFirstTime();
-            await generateEventsUseCase.execute({ ignoreCache: false });
+            await generateEventsUseCase.execute();
 
             expect(fakeInterpretationsRepository.lastDateFilter).toBeNull();
         });
         it("should save interpretations in cache", async () => {
             givenAFirstTime();
-            await generateEventsUseCase.execute({ ignoreCache: false });
+            await generateEventsUseCase.execute();
 
             expect(fakeInterpretationsRepository.getFromCache()).toEqual(
                 await fakeInterpretationsRepository.getFromAPI()
@@ -31,13 +31,13 @@ describe("generateEventsUseCase", () => {
         });
         it("should not save events in cache", async () => {
             givenAFirstTime();
-            await generateEventsUseCase.execute({ ignoreCache: false });
+            await generateEventsUseCase.execute();
 
             expect(fakeEventsRepository.get()).toEqual([]);
         });
         it("should save lastExecution date in cache", async () => {
             givenAFirstTime();
-            await generateEventsUseCase.execute({ ignoreCache: false });
+            await generateEventsUseCase.execute();
 
             const lastSuccess = moment(
                 fakeLastExecutionsRepository.get().getEvents.lastSuccess
@@ -49,7 +49,7 @@ describe("generateEventsUseCase", () => {
     describe("next times", () => {
         it("should get interpretations to API with expected date filter", async () => {
             givenANextTimeWithoutChangesInInterpretations();
-            await generateEventsUseCase.execute({ ignoreCache: false });
+            await generateEventsUseCase.execute();
 
             const lastSuccess = moment(
                 fakeLastExecutionsRepository.get().getEvents.lastSuccess
@@ -59,13 +59,13 @@ describe("generateEventsUseCase", () => {
         });
         it("should not generate events if there are no changes in interpretations and comments", async () => {
             givenANextTimeWithoutChangesInInterpretations();
-            await generateEventsUseCase.execute({ ignoreCache: false });
+            await generateEventsUseCase.execute();
 
             expect(fakeEventsRepository.get()).toEqual([]);
         });
         it("should save lastExecution date in cache event if not generate events", async () => {
             givenANextTimeWithoutChangesInInterpretations();
-            await generateEventsUseCase.execute({ ignoreCache: false });
+            await generateEventsUseCase.execute();
 
             const lastSuccess = moment(
                 fakeLastExecutionsRepository.get().getEvents.lastSuccess
@@ -76,7 +76,7 @@ describe("generateEventsUseCase", () => {
         it("should generate new events of create type and interpretation model if interpretations has been created", async () => {
             const { newInterpretations } = givenANextTimeWithCreateInterpretationsChanges();
             const previousCachedEvents = fakeEventsRepository.get();
-            await generateEventsUseCase.execute({ ignoreCache: false });
+            await generateEventsUseCase.execute();
             const events = newInterpretations.map(interpretation => {
                 return {
                     type: "insert",
@@ -93,7 +93,7 @@ describe("generateEventsUseCase", () => {
             const { newInterpretations } = givenANextTimeWithCreateInterpretationsChanges();
             const previousCachedInterpretations = fakeInterpretationsRepository.getFromCache();
 
-            await generateEventsUseCase.execute({ ignoreCache: false });
+            await generateEventsUseCase.execute();
 
             const cachedInterpretations = fakeInterpretationsRepository.getFromCache();
 
@@ -105,7 +105,7 @@ describe("generateEventsUseCase", () => {
         it("should generate new events of update type and interpretation model if interpretations has been updated", async () => {
             const { editedInterpretations } = givenANextTimeWithEditInterpretationsChanges();
             const previousCachedEvents = fakeEventsRepository.get();
-            await generateEventsUseCase.execute({ ignoreCache: false });
+            await generateEventsUseCase.execute();
             const events = editedInterpretations.map(interpretation => {
                 return {
                     type: "update",
@@ -122,7 +122,7 @@ describe("generateEventsUseCase", () => {
             const { editedInterpretations } = givenANextTimeWithEditInterpretationsChanges();
             const previousCachedInterpretations = fakeInterpretationsRepository.getFromCache();
 
-            await generateEventsUseCase.execute({ ignoreCache: false });
+            await generateEventsUseCase.execute();
 
             const cachedInterpretations = fakeInterpretationsRepository.getFromCache();
 
@@ -136,7 +136,7 @@ describe("generateEventsUseCase", () => {
             const { interpretationsWithNewComments } = givenANextTimeWithCreateCommentsChanges();
             const previousCachedEvents = fakeEventsRepository.get();
 
-            await generateEventsUseCase.execute({ ignoreCache: false });
+            await generateEventsUseCase.execute();
 
             const events = interpretationsWithNewComments.reduce((events, interpretation) => {
                 const createdCommentEvents = interpretation.comments
@@ -161,7 +161,7 @@ describe("generateEventsUseCase", () => {
             const { interpretationsWithNewComments } = givenANextTimeWithCreateCommentsChanges();
             const previousCachedInterpretations = fakeInterpretationsRepository.getFromCache();
 
-            await generateEventsUseCase.execute({ ignoreCache: false });
+            await generateEventsUseCase.execute();
 
             const cachedInterpretations = fakeInterpretationsRepository.getFromCache();
 
@@ -177,7 +177,7 @@ describe("generateEventsUseCase", () => {
             const { interpretationsWithEditedComments } = givenANextTimeWithEditedCommentsChanges();
             const previousCachedEvents = fakeEventsRepository.get();
 
-            await generateEventsUseCase.execute({ ignoreCache: false });
+            await generateEventsUseCase.execute();
 
             const events = interpretationsWithEditedComments.reduce((events, interpretation) => {
                 const editedCommentEvents = interpretation.comments
@@ -204,7 +204,7 @@ describe("generateEventsUseCase", () => {
             const { interpretationsWithEditedComments } = givenANextTimeWithEditedCommentsChanges();
             const previousCachedInterpretations = fakeInterpretationsRepository.getFromCache();
 
-            await generateEventsUseCase.execute({ ignoreCache: false });
+            await generateEventsUseCase.execute();
 
             const cachedInterpretations = fakeInterpretationsRepository.getFromCache();
 
@@ -222,7 +222,7 @@ describe("generateEventsUseCase", () => {
             } = givenANextTimeWithCreateInterpretationAndCommentsChanges();
             const previousCachedEvents = fakeEventsRepository.get();
 
-            await generateEventsUseCase.execute({ ignoreCache: false });
+            await generateEventsUseCase.execute();
 
             const newInterpretationEvents = newInterpretationsWithNewComment.map(interpretation => {
                 return {
@@ -257,7 +257,7 @@ describe("generateEventsUseCase", () => {
         });
         it("should save lastExecution date in cache if generate events", async () => {
             givenANextTimeWithCreateCommentsChanges();
-            await generateEventsUseCase.execute({ ignoreCache: false });
+            await generateEventsUseCase.execute();
             const lastSuccess = moment(
                 fakeLastExecutionsRepository.get().getEvents.lastSuccess
             ).toISOString();

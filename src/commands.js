@@ -262,12 +262,11 @@ async function getDataForTriggerEvents(api, triggerEvents) {
 }
 
 async function sendMessagesForEvents(api, cacheKey, options, action) {
-    const { cacheFilePath, namespace, maxTimeWindow, ignoreCache, smtp, assets } = _.defaults(
+    const { cacheFilePath, namespace, maxTimeWindow, smtp, assets } = _.defaults(
         options,
         {
             cacheFilePath: "./cache/lastExecutions.json",
             namespace: "notifications",
-            ignoreCache: false,
             maxTimeWindow: [1, "hour"],
             smtp: {},
             assets: {},
@@ -275,9 +274,9 @@ async function sendMessagesForEvents(api, cacheKey, options, action) {
     );
     const lastExecutionsRepository = new LastExecutionsRepository(cacheFilePath);
     const cache = lastExecutionsRepository.get();
-    const lastSuccessDate = ignoreCache || !cache[cacheKey] ? null : cache[cacheKey].lastSuccess;
+    const lastSuccessDate = !cache[cacheKey] ? null : cache[cacheKey].lastSuccess;
     const lastEventDateForUserByUser =
-        ignoreCache || !cache[cacheKey] ? {} : cache[cacheKey].users || {};
+        !cache[cacheKey] ? {} : cache[cacheKey].users || {};
     const getBucketFromTime = time => "ev-month-" + time.format("YYYY-MM");
     const defaultStartDate = moment().subtract(...maxTimeWindow);
     const startDate = lastSuccessDate
@@ -619,7 +618,6 @@ async function sendNotifications(argv) {
     const api = new Dhis2Api(apiOptions);
     const triggerOptions = {
         cacheFilePath: cacheFilePath,
-        ignoreCache: argv.ignoreCache,
         maxTimeWindow: [1, "hour"],
         smtp,
         assets,
@@ -636,7 +634,6 @@ async function sendNewsletters(argv) {
     const api = new Dhis2Api(apiOptions);
     const triggerOptions = {
         cacheFilePath: cacheFilePath,
-        ignoreCache: argv.ignoreCache,
         maxTimeWindow: [7, "days"],
         smtp,
         assets,

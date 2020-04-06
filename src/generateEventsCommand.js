@@ -14,13 +14,11 @@ async function generateEvents(argv) {
 
     const api = new Dhis2Api(apiOptions);
     const commandOptions = {
-        cacheFilePath: cacheFilePath,
-        ignoreCache: argv.ignoreCache,
+        cacheFilePath: cacheFilePath
     };
 
     const options = _.defaults(commandOptions, {
-        cacheFilePath: ".notifications-cache.json",
-        ignoreCache: false,
+        cacheFilePath: "./cache/lastExecutions.json"
     });
 
     const lastExecutionsRepository = new LastExecutionsRepository(options.cacheFilePath);
@@ -33,9 +31,7 @@ async function generateEvents(argv) {
         eventsRepository
     );
 
-    await generateEventsUseCase.execute({
-        ignoreCache: options.ignoreCache,
-    });
+    await generateEventsUseCase.execute();
 }
 
 Object.assign(module.exports, {

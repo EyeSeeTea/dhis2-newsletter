@@ -4,9 +4,9 @@ const _ = require("lodash");
 
 const lastExecutionKey = "getEvents";
 
-const getDateFilter = (lastExecutions, options) => {
+const getDateFilter = (lastExecutions) => {
     const lastSuccessDate =
-        options.ignoreCache || !lastExecutions[lastExecutionKey]
+        !lastExecutions[lastExecutionKey]
             ? null
             : lastExecutions[lastExecutionKey].lastSuccess;
 
@@ -203,8 +203,8 @@ class GenerateEventsUseCase {
         this.eventsRepository = eventsRepository;
     }
 
-    async execute(options) {
-        const dateFilter = getDateFilter(this.lastExecutionsRepository.get(), options);
+    async execute() {
+        const dateFilter = getDateFilter(this.lastExecutionsRepository.get());
         const isFirstTime = !dateFilter;
 
         const interpretationsFromAPI = await this.interpretationsRepository.getFromAPI(
