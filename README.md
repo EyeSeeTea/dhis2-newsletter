@@ -26,11 +26,11 @@ $ which dhis2-subscriptions
 * Add crontab entries (`crontab -e`) to send notifications and newsletters to subscribers. An example:
 
 ```
-*/5 * * * *   chronic /path/to/bin/dhis2-subscriptions --config-file=/path/to/your/config.json generate-events
+*/5 * * * *   chronic /path/to/bin/dhis2-subscriptions generate-events --config-file=/path/to/your/config.json 
 
-*/8 * * * *   chronic /path/to/bin/dhis2-subscriptions --config-file=/path/to/your/config.json send-notifications
+*/8 * * * *   chronic /path/to/bin/dhis2-subscriptions send-notifications --config-file=/path/to/your/config.json --ge=true or false
 
-00  8 * * MON chronic /path/to/bin/dhis2-subscriptions --config-file=/path/to/your/config.json send-newsletters
+00  8 * * MON chronic /path/to/bin/dhis2-subscriptions send-newsletters --config-file=/path/to/your/config.json --ge=true or false
 ```
 
 ## Configuration file (`config.json`)
@@ -50,8 +50,8 @@ $ which dhis2-subscriptions
     // DHIS2 public URL
     "publicUrl": "http://localhost:8080",
 
-    // Cache file to store timestamp of previous sent operations
-    "cacheFilePath": ".notifications-cache.json",
+    // Cache file to store timestamp of previous commands executions
+    "cacheFilePath": "./cache/lastExecutions.json",
 
     // DHIS2 Api details
     "api": {
@@ -84,17 +84,17 @@ $ which dhis2-subscriptions
 Detect changes in interpretations and its comments for objects (charts, eventCharts, maps, reportTables, eventReports):
 
 ```
-$ dhis2-subscriptions [-c path/to/config.json] generate-events
+$ dhis2-subscriptions generate-events [-c path/to/config.json] 
 ```
 
-Send emails to subscribers of objects (charts, eventCharts, maps, reportTables, eventReports):
+Execute previously the generate events command and send emails to subscribers of objects (charts, eventCharts, maps, reportTables, eventReports):
 
 ```
-$ dhis2-subscriptions [-c path/to/config.json] send-notifications
+$ dhis2-subscriptions send-notifications [-c path/to/config.json] --ge=true
 ```
 
-Send a weekly report of interpretations to subscribers of their parent objects:
+Execute previously the generate events command and send a weekly report of interpretations to subscribers of their parent objects:
 
 ```
-$ dhis2-subscriptions [-c path/to/config.json] send-newsletters
+$ dhis2-subscriptions send-newsletters [-c path/to/config.json] --ge=true
 ```
