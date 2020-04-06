@@ -33,7 +33,7 @@ async function generateEvents(argv) {
         eventsRepository
     );
 
-    generateEventsUseCase.execute({
+    await generateEventsUseCase.execute({
         ignoreCache: options.ignoreCache,
     });
 }
