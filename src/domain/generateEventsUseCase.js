@@ -24,7 +24,7 @@ const generateLastExecutions = (lastExecutions) => {
 };
 
 const extractComments = (interpretations) => {
-    const comments = interpretations.map((interpretation) =>
+    const comments = _.flatMap(interpretations, (interpretation) =>
         interpretation.comments.map((comment) => {
             return {
                 ...comment,
@@ -34,7 +34,7 @@ const extractComments = (interpretations) => {
         })
     );
 
-    return _.flatMap(comments);
+    return comments;
 };
 
 const generateCreateInterpretationsEvents = (cachedInterpretations, interpretationsChanges) => {

@@ -1,5 +1,5 @@
-var moment = require("moment");
-
+const moment = require("moment");
+const _ = require("lodash");
 const helpers = require("../helpers");
 
 class EventsRepository {
@@ -11,12 +11,10 @@ class EventsRepository {
     }
 
     save(events) {
-        const eventsByFile = events.reduce((map, event) => {
-            const fileName = `ev-month-${moment(event.created).format("YYYY-MM")}.json`;
-
-            (map[fileName] = map[fileName] || []).push(event);
-            return map;
-        }, {});
+        const eventsByFile = _.groupBy(
+            events,
+            (event) => `ev-month-${moment(event.created).format("YYYY-MM")}.json`
+        );
 
         const path = this.cachePath;
 
