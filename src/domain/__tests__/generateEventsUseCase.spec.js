@@ -21,6 +21,7 @@ describe("generateEventsUseCase", () => {
 
             expect(fakeInterpretationsRepository.lastDateFilter).toBeNull();
         });
+
         it("should save interpretations in cache", async () => {
             givenAFirstTime();
             await generateEventsUseCase.execute();
@@ -29,12 +30,14 @@ describe("generateEventsUseCase", () => {
                 await fakeInterpretationsRepository.getFromAPI()
             );
         });
+
         it("should not save events in cache", async () => {
             givenAFirstTime();
             await generateEventsUseCase.execute();
 
             expect(fakeEventsRepository.get()).toEqual([]);
         });
+
         it("should save lastExecution date in cache", async () => {
             givenAFirstTime();
             await generateEventsUseCase.execute();
@@ -57,12 +60,14 @@ describe("generateEventsUseCase", () => {
 
             expect(fakeInterpretationsRepository.lastDateFilter).toBe(lastSuccess);
         });
+
         it("should not generate events if there are no changes in interpretations and comments", async () => {
             givenANextTimeWithoutChangesInInterpretations();
             await generateEventsUseCase.execute();
 
             expect(fakeEventsRepository.get()).toEqual([]);
         });
+
         it("should save lastExecution date in cache event if not generate events", async () => {
             givenANextTimeWithoutChangesInInterpretations();
             await generateEventsUseCase.execute();
@@ -73,11 +78,12 @@ describe("generateEventsUseCase", () => {
 
             expect(moment().isSame(lastSuccess, "second")).toBe(true);
         });
+
         it("should generate new events of create type and interpretation model if interpretations has been created", async () => {
             const { newInterpretations } = givenANextTimeWithCreateInterpretationsChanges();
             const previousCachedEvents = fakeEventsRepository.get();
             await generateEventsUseCase.execute();
-            const events = newInterpretations.map(interpretation => {
+            const events = newInterpretations.map((interpretation) => {
                 return {
                     type: "insert",
                     model: "interpretation",
@@ -89,6 +95,7 @@ describe("generateEventsUseCase", () => {
             const cachedEvents = fakeEventsRepository.get();
             expect(cachedEvents).toEqual([...previousCachedEvents, ...events]);
         });
+
         it("should add interpretations to cache if new interpretations has been created ", async () => {
             const { newInterpretations } = givenANextTimeWithCreateInterpretationsChanges();
             const previousCachedInterpretations = fakeInterpretationsRepository.getFromCache();
@@ -102,11 +109,12 @@ describe("generateEventsUseCase", () => {
                 ...newInterpretations,
             ]);
         });
+
         it("should generate new events of update type and interpretation model if interpretations has been updated", async () => {
             const { editedInterpretations } = givenANextTimeWithEditInterpretationsChanges();
             const previousCachedEvents = fakeEventsRepository.get();
             await generateEventsUseCase.execute();
-            const events = editedInterpretations.map(interpretation => {
+            const events = editedInterpretations.map((interpretation) => {
                 return {
                     type: "update",
                     model: "interpretation",
@@ -118,6 +126,7 @@ describe("generateEventsUseCase", () => {
             const cachedEvents = fakeEventsRepository.get();
             expect(cachedEvents).toEqual([...previousCachedEvents, ...events]);
         });
+
         it("should udpate interpretations in cache if interpretations has been edited", async () => {
             const { editedInterpretations } = givenANextTimeWithEditInterpretationsChanges();
             const previousCachedInterpretations = fakeInterpretationsRepository.getFromCache();
@@ -128,10 +137,11 @@ describe("generateEventsUseCase", () => {
 
             expect(cachedInterpretations).toEqual(
                 previousCachedInterpretations.map(
-                    old => editedInterpretations.find(edited => edited.id === old.id) || old
+                    (old) => editedInterpretations.find((edited) => edited.id === old.id) || old
                 )
             );
         });
+
         it("should generate comment create event if a comment has been created ", async () => {
             const { interpretationsWithNewComments } = givenANextTimeWithCreateCommentsChanges();
             const previousCachedEvents = fakeEventsRepository.get();
@@ -140,8 +150,8 @@ describe("generateEventsUseCase", () => {
 
             const events = interpretationsWithNewComments.reduce((events, interpretation) => {
                 const createdCommentEvents = interpretation.comments
-                    .filter(comment => comment.text.includes("new"))
-                    .map(comment => {
+                    .filter((comment) => comment.text.includes("new"))
+                    .map((comment) => {
                         return {
                             type: "insert",
                             model: "comment",
@@ -157,6 +167,7 @@ describe("generateEventsUseCase", () => {
             const cachedEvents = fakeEventsRepository.get();
             expect(cachedEvents).toEqual([...previousCachedEvents, ...events]);
         });
+
         it("should udpate interpretations in cache if a comment has been created", async () => {
             const { interpretationsWithNewComments } = givenANextTimeWithCreateCommentsChanges();
             const previousCachedInterpretations = fakeInterpretationsRepository.getFromCache();
@@ -167,8 +178,8 @@ describe("generateEventsUseCase", () => {
 
             expect(cachedInterpretations).toEqual(
                 previousCachedInterpretations.map(
-                    old =>
-                        interpretationsWithNewComments.find(edited => edited.id === old.id) || old
+                    (old) =>
+                        interpretationsWithNewComments.find((edited) => edited.id === old.id) || old
                 )
             );
         });
@@ -181,8 +192,8 @@ describe("generateEventsUseCase", () => {
 
             const events = interpretationsWithEditedComments.reduce((events, interpretation) => {
                 const editedCommentEvents = interpretation.comments
-                    .filter(comment => comment.text.includes("edited"))
-                    .map(comment => {
+                    .filter((comment) => comment.text.includes("edited"))
+                    .map((comment) => {
                         return {
                             type: "update",
                             model: "comment",
@@ -200,6 +211,7 @@ describe("generateEventsUseCase", () => {
             const cachedEvents = fakeEventsRepository.get();
             expect(cachedEvents).toEqual([...previousCachedEvents, ...events]);
         });
+
         it("should udpate interpretations in cache if a comment has been edited", async () => {
             const { interpretationsWithEditedComments } = givenANextTimeWithEditedCommentsChanges();
             const previousCachedInterpretations = fakeInterpretationsRepository.getFromCache();
@@ -210,12 +222,13 @@ describe("generateEventsUseCase", () => {
 
             expect(cachedInterpretations).toEqual(
                 previousCachedInterpretations.map(
-                    old =>
-                        interpretationsWithEditedComments.find(edited => edited.id === old.id) ||
+                    (old) =>
+                        interpretationsWithEditedComments.find((edited) => edited.id === old.id) ||
                         old
                 )
             );
         });
+
         it("should generate interpretations and comments create events if interpretations with comment has been created", async () => {
             const {
                 newInterpretationsWithNewComment,
@@ -224,19 +237,21 @@ describe("generateEventsUseCase", () => {
 
             await generateEventsUseCase.execute();
 
-            const newInterpretationEvents = newInterpretationsWithNewComment.map(interpretation => {
-                return {
-                    type: "insert",
-                    model: "interpretation",
-                    created: helpers.dhisDateToISODate(interpretation.lastUpdated),
-                    commentId: null,
-                    interpretationId: interpretation.id,
-                };
-            });
+            const newInterpretationEvents = newInterpretationsWithNewComment.map(
+                (interpretation) => {
+                    return {
+                        type: "insert",
+                        model: "interpretation",
+                        created: helpers.dhisDateToISODate(interpretation.lastUpdated),
+                        commentId: null,
+                        interpretationId: interpretation.id,
+                    };
+                }
+            );
 
             const newCommentsEvents = _.flatten(
-                newInterpretationsWithNewComment.map(interpretation =>
-                    interpretation.comments.map(comment => {
+                newInterpretationsWithNewComment.map((interpretation) =>
+                    interpretation.comments.map((comment) => {
                         return {
                             type: "insert",
                             model: "comment",
@@ -255,6 +270,7 @@ describe("generateEventsUseCase", () => {
                 ...newCommentsEvents,
             ]);
         });
+
         it("should save lastExecution date in cache if generate events", async () => {
             givenANextTimeWithCreateCommentsChanges();
             await generateEventsUseCase.execute();
@@ -305,7 +321,7 @@ function givenANextTimeWithCreateInterpretationsChanges() {
     fakeInterpretationsRepository.interpretationsFromCache =
         fakeInterpretationsRepository.interpretationsTemplate;
 
-    fakeInterpretationsRepository.interpretationsFromAPI = [1, 2].map(index => {
+    fakeInterpretationsRepository.interpretationsFromAPI = [1, 2].map((index) => {
         return {
             lastUpdated: helpers.isoDateToDhisDate(moment().toISOString()),
             id: `newUID ${index}`,
@@ -335,7 +351,7 @@ function givenANextTimeWithEditInterpretationsChanges() {
         fakeInterpretationsRepository.interpretationsTemplate;
 
     fakeInterpretationsRepository.interpretationsFromAPI = fakeInterpretationsRepository.interpretationsFromCache.map(
-        interpretation => {
+        (interpretation) => {
             return { ...interpretation, text: `${interpretation.text} (edited)` };
         }
     );
@@ -360,7 +376,7 @@ function givenANextTimeWithCreateCommentsChanges() {
     fakeInterpretationsRepository.interpretationsFromCache =
         fakeInterpretationsRepository.interpretationsTemplate;
 
-    const newComments = [1, 2].map(index => {
+    const newComments = [1, 2].map((index) => {
         return {
             lastUpdated: helpers.isoDateToDhisDate(moment().toISOString()),
             id: `newUID ${index}`,
@@ -369,7 +385,7 @@ function givenANextTimeWithCreateCommentsChanges() {
     });
 
     fakeInterpretationsRepository.interpretationsFromAPI = fakeInterpretationsRepository.interpretationsFromCache.map(
-        interpretation => {
+        (interpretation) => {
             return { ...interpretation, comments: [...interpretation.comments, ...newComments] };
         }
     );
@@ -395,10 +411,10 @@ function givenANextTimeWithEditedCommentsChanges() {
         fakeInterpretationsRepository.interpretationsTemplate;
 
     fakeInterpretationsRepository.interpretationsFromAPI = fakeInterpretationsRepository.interpretationsFromCache.map(
-        interpretation => {
+        (interpretation) => {
             return {
                 ...interpretation,
-                comments: interpretation.comments.map(comment => {
+                comments: interpretation.comments.map((comment) => {
                     return { ...comment, text: `${comment.text} (edited)` };
                 }),
             };
@@ -425,12 +441,12 @@ function givenANextTimeWithCreateInterpretationAndCommentsChanges() {
     fakeInterpretationsRepository.interpretationsFromCache =
         fakeInterpretationsRepository.interpretationsTemplate;
 
-    fakeInterpretationsRepository.interpretationsFromAPI = [1, 2].map(index => {
+    fakeInterpretationsRepository.interpretationsFromAPI = [1, 2].map((index) => {
         return {
             lastUpdated: helpers.isoDateToDhisDate(moment().toISOString()),
             id: `newUID ${index}`,
             text: `new interpretation ${index}`,
-            comments: [1, 2].map(index => {
+            comments: [1, 2].map((index) => {
                 return {
                     lastUpdated: helpers.isoDateToDhisDate(moment().toISOString()),
                     id: `newUID ${index}`,

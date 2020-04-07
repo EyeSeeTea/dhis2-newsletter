@@ -18,6 +18,7 @@ describe("eventRepository", () => {
             repository.save(events);
             verifyExistFilesForMonths(events, repository);
         });
+
         it("should update the existed file in cache for month with events if it does exist", () => {
             const events = givenThereEventsForOneMonthAndExistsPreviouslyOldInCache();
             const repository = new EventsRepository(cachePath);
@@ -25,6 +26,7 @@ describe("eventRepository", () => {
             verifyExistFilesForMonths(events, repository);
         });
     });
+
     describe("two month", () => {
         it("should create new files in cache for months with events if it doesn't exist ", () => {
             const events = givenThereEventsForTwoMonthsAndNotExistsInCache();
@@ -32,12 +34,14 @@ describe("eventRepository", () => {
             repository.save(events);
             verifyExistFilesForMonths(events, repository);
         });
+
         it("should update the existed files in cache for months with events if the files does exist", () => {
             const events = givenThereEventsForTwoMonthsAndExistsPreviouslyOldInCache();
             const repository = new EventsRepository(cachePath);
             repository.save(events);
             verifyExistFilesForMonths(events, repository);
         });
+
         it("should create a new file and update the existed file in cache for months with events if only one does exist", () => {
             const events = givenThereEventsForTwoMonthsAndExistsPreviouslyForOneOldInCache();
 
@@ -61,19 +65,19 @@ function verifyExistFilesForMonths(newEvents, repository) {
         }
     }, []);
 
-    monthNames.forEach(monthName => {
+    monthNames.forEach((monthName) => {
         const savedEventsMonth = repository.get(monthName);
         const month = monthName.slice(-7);
 
-        const newEventsInMonth = newEvents.filter(event => {
+        const newEventsInMonth = newEvents.filter((event) => {
             const eventMoth = moment(event.created).format("YYYY-MM");
             return eventMoth === month;
         });
 
         expect(
-            newEventsInMonth.every(event =>
+            newEventsInMonth.every((event) =>
                 savedEventsMonth.some(
-                    savedEvent =>
+                    (savedEvent) =>
                         savedEvent.interpretationId === event.interpretationId &&
                         savedEvent.commentId === event.commentId &&
                         savedEvent.created === event.created
@@ -116,7 +120,7 @@ function givenThereEventsForTwoMonthsAndExistsPreviouslyForOneOldInCache() {
 }
 
 function generateEvents(oneMonth = true) {
-    return [...Array(10).keys()].map(index => {
+    return [...Array(10).keys()].map((index) => {
         return {
             type: `update`,
             model: `interpretation ${index}`,
@@ -133,9 +137,9 @@ function generateEvents(oneMonth = true) {
     });
 }
 
-const clearCache = path => {
+const clearCache = (path) => {
     if (fs.existsSync(path)) {
-        fs.readdirSync(path).forEach(file => {
+        fs.readdirSync(path).forEach((file) => {
             const curPath = Path.join(path, file);
             if (fs.lstatSync(curPath).isDirectory()) {
                 deleteFolderRecursive(curPath);
