@@ -23,10 +23,9 @@ class EventsRepository {
         Object.keys(eventsByFile).forEach(function(key) {
             const eventsInCache = JSON.parse(helpers.fileRead(path + key, JSON.stringify([])));
             const eventsToSaveInCache = eventsByFile[key];
-
             const newEvents = [...eventsInCache, ...eventsToSaveInCache];
 
-            helpers.fileWrite(path + key, JSON.stringify(newEvents, null, 4) + "\n");
+            helpers.fileWrite(path + key, helpers.toJson(newEvents));
         });
     }
 }

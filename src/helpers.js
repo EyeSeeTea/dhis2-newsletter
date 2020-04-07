@@ -57,7 +57,7 @@ function ensureDirectoryExistence(filePath) {
 function sendMessage(api, subject, body, recipients) {
     const recipientsByModel = _(recipients)
         .groupBy("type")
-        .mapValues(models => models.map(model => ({ id: model.id })))
+        .mapValues((models) => models.map((model) => ({ id: model.id })))
         .value();
     const message = {
         subject: subject,
@@ -93,14 +93,14 @@ function loadTranslations(directory) {
     };
 
     return _(fs.readdirSync(directory))
-        .filter(filename => filename.endsWith(".properties"))
-        .map(filename => {
+        .filter((filename) => filename.endsWith(".properties"))
+        .map((filename) => {
             const locale = filename.split(".")[0];
             const obj = properties.parse(fileRead(path.join(directory, filename)));
-            const objWithTemplates = _.mapValues(obj, s => _.template(s, templateSettings));
+            const objWithTemplates = _.mapValues(obj, (s) => _.template(s, templateSettings));
             const t = (key, namespace = {}) =>
                 (objWithTemplates[key] || (() => `**${key}**`))(namespace);
-            const i18nObj = { t, formatDate: date => moment(date).format("L") };
+            const i18nObj = { t, formatDate: (date) => moment(date).format("L") };
 
             return [locale, i18nObj];
         })
@@ -127,17 +127,17 @@ function getNotificationSettings(user) {
     };
 
     const userAttributesValuesByCode = _(user.attributeValues)
-        .map(attributeValue => [attributeValue.attribute.code, attributeValue.value === "true"])
+        .map((attributeValue) => [attributeValue.attribute.code, attributeValue.value === "true"])
         .fromPairs()
         .value();
 
     return _(attributeCodes)
-        .mapValues(attributeCode => userAttributesValuesByCode[attributeCode])
+        .mapValues((attributeCode) => userAttributesValuesByCode[attributeCode])
         .value();
 }
 
 function catchWithDebug(promise, { message, defaultValue }) {
-    return promise.catch(err => {
+    return promise.catch((err) => {
         debug(`ERROR: ${message}: ${err}`);
         return defaultValue;
     });
@@ -149,6 +149,10 @@ function dhisDateToISODate(date) {
 
 function isoDateToDhisDate(date) {
     return date.replace("Z", "");
+}
+
+function toJson(obj) {
+    return JSON.stringify(obj, null, 4) + "\n";
 }
 
 Object.assign(module.exports, {
@@ -167,4 +171,5 @@ Object.assign(module.exports, {
     catchWithDebug,
     dhisDateToISODate,
     isoDateToDhisDate,
+    toJson,
 });

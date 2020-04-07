@@ -28,7 +28,7 @@ class InterpretationsRepository {
     }
 
     saveToCache(interpretations) {
-        helpers.fileWrite(this.cacheFilePath, JSON.stringify(interpretations, null, 4) + "\n");
+        helpers.fileWrite(this.cacheFilePath, helpers.toJson(interpretations));
     }
 }
 

@@ -5,10 +5,9 @@ const _ = require("lodash");
 const lastExecutionKey = "getEvents";
 
 const getDateFilter = (lastExecutions) => {
-    const lastSuccessDate =
-        !lastExecutions[lastExecutionKey]
-            ? null
-            : lastExecutions[lastExecutionKey].lastSuccess;
+    const lastSuccessDate = !lastExecutions[lastExecutionKey]
+        ? null
+        : lastExecutions[lastExecutionKey].lastSuccess;
 
     return lastSuccessDate;
 };
@@ -35,7 +34,7 @@ const extractComments = (interpretations) => {
         })
     );
 
-    return _.flatten(comments);
+    return _.flatMap(comments);
 };
 
 const generateCreateInterpretationsEvents = (cachedInterpretations, interpretationsChanges) => {

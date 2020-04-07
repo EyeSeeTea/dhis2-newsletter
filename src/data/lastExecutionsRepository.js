@@ -9,7 +9,7 @@ class LastExecutionsRepository {
     }
 
     save(newCache) {
-        helpers.fileWrite(this.cacheFilePath, JSON.stringify(newCache, null, 4) + "\n");
+        helpers.fileWrite(this.cacheFilePath, helpers.toJson(newCache));
     }
 }
 

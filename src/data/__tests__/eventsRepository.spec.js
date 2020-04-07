@@ -1,6 +1,7 @@
 const moment = require("moment");
 const fs = require("fs");
 const Path = require("path");
+const _ = require("lodash");
 
 var { EventsRepository } = require("../eventsRepository");
 
@@ -55,15 +56,10 @@ describe("eventRepository", () => {
 });
 
 function verifyExistFilesForMonths(newEvents, repository) {
-    const monthNames = newEvents.reduce((accumulator, currentValue) => {
-        const fileName = "ev-month-" + moment(currentValue.created).format("YYYY-MM");
-
-        if (!accumulator.includes(fileName)) {
-            return [...accumulator, fileName];
-        } else {
-            return accumulator;
-        }
-    }, []);
+    const monthNames = _(newEvents)
+        .map((event) => "ev-month-" + moment(event.created).format("YYYY-MM"))
+        .uniq()
+        .value();
 
     monthNames.forEach((monthName) => {
         const savedEventsMonth = repository.get(monthName);
@@ -120,7 +116,7 @@ function givenThereEventsForTwoMonthsAndExistsPreviouslyForOneOldInCache() {
 }
 
 function generateEvents(oneMonth = true) {
-    return [...Array(10).keys()].map((index) => {
+    return _.range(0, 10).map((index) => {
         return {
             type: `update`,
             model: `interpretation ${index}`,
