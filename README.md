@@ -50,8 +50,8 @@ $ which dhis2-subscriptions
     // DHIS2 public URL
     "publicUrl": "http://localhost:8080",
 
-    // Cache file to store timestamp of previous commands executions
-    "cacheFilePath": "./cache/lastExecutions.json",
+    // Cache directory to store all cache files
+    "cacheDir": "./cache",
 
     // DHIS2 Api details
     "api": {

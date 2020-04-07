@@ -1,8 +1,9 @@
 const helpers = require("../helpers");
+const path = require("path");
 
 class LastExecutionsRepository {
-    constructor(cacheFilePath) {
-        this.cacheFilePath = cacheFilePath;
+    constructor(cacheDir = "./cache") {
+        this.cacheFilePath = path.join(cacheDir, "lastExecutions.json");
     }
     get() {
         return JSON.parse(helpers.fileRead(this.cacheFilePath, JSON.stringify({})));

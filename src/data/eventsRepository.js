@@ -1,13 +1,14 @@
 const moment = require("moment");
 const _ = require("lodash");
 const helpers = require("../helpers");
+const path = require("path");
 
 class EventsRepository {
-    constructor(cachePath = "./cache/events/") {
-        this.cachePath = cachePath;
+    constructor(cacheDir = "./cache") {
+        this.cacheDir = path.join(cacheDir, "events/");
     }
     get(bucket) {
-        return JSON.parse(helpers.fileRead(this.cachePath + `${bucket}.json`, JSON.stringify([])));
+        return JSON.parse(helpers.fileRead(this.cacheDir + `${bucket}.json`, JSON.stringify([])));
     }
 
     save(events) {
@@ -16,7 +17,7 @@ class EventsRepository {
             (event) => `ev-month-${moment(event.created).format("YYYY-MM")}.json`
         );
 
-        const path = this.cachePath;
+        const path = this.cacheDir;
 
         Object.keys(eventsByFile).forEach(function(key) {
             const eventsInCache = JSON.parse(helpers.fileRead(path + key, JSON.stringify([])));

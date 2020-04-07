@@ -10,20 +10,13 @@ const { GenerateEventsUseCase } = require("./domain/generateEventsUseCase");
 async function generateEvents(argv) {
     const configOptions = helpers.loadConfigOptions(argv.configFile);
 
-    const { api: apiOptions, cacheFilePath } = configOptions;
+    const { api: apiOptions, cacheDir } = configOptions;
 
     const api = new Dhis2Api(apiOptions);
-    const commandOptions = {
-        cacheFilePath: cacheFilePath
-    };
 
-    const options = _.defaults(commandOptions, {
-        cacheFilePath: "./cache/lastExecutions.json"
-    });
-
-    const lastExecutionsRepository = new LastExecutionsRepository(options.cacheFilePath);
-    const interpretationsRepository = new InterpretationsRepository(api);
-    const eventsRepository = new EventsRepository();
+    const lastExecutionsRepository = new LastExecutionsRepository(cacheDir);
+    const interpretationsRepository = new InterpretationsRepository(api, cacheDir);
+    const eventsRepository = new EventsRepository(cacheDir);
 
     const generateEventsUseCase = new GenerateEventsUseCase(
         lastExecutionsRepository,

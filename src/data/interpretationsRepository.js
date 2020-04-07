@@ -1,10 +1,11 @@
 const _ = require("lodash");
 const helpers = require("../helpers");
+const path = require("path");
 
 class InterpretationsRepository {
-    constructor(api) {
+    constructor(api, cacheDir = "./cache") {
         this.api = api;
-        this.cacheFilePath = "./cache/interpretations.json";
+        this.cacheFilePath = path.join(cacheDir, "interpretations.json");
     }
 
     async getFromAPI(dateFilter) {
