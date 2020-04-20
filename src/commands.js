@@ -124,14 +124,14 @@ async function getNotificationMessagesForEvent(
         const i18n = await getI18n(api, user, locale);
 
         const subject = [
-            interpretation.user.displayName,
+            interpretationOrComment.user.displayName,
             i18n.t(`${event.model}_${event.type}`),
         ].join(" ");
 
         const bodyText = [
             [
-                interpretation.user.displayName,
-                `(${interpretation.user.userCredentials.username})`,
+                interpretationOrComment.user.displayName,
+                `(${interpretationOrComment.user.userCredentials.username})`,
                 i18n.t(`${event.model}_${event.type}`),
                 i18n.t("object_subscribed") + ":",
             ].join(" "),
