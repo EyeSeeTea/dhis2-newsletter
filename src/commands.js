@@ -60,14 +60,17 @@ function getObjectFromInterpretation(interpretation) {
 
 function getInterpretationUrl(interpretation, publicUrl) {
     const object = interpretation.object;
-    const { appPath: appPathTemplate } = object.extraInfo;
+    const appPathTemplate = object.extraInfo.appPath.interpretation;
     const namespace = { id: object.id, interpretationId: interpretation.id };
     const appPath = helpers.interpolate(appPathTemplate, namespace);
     return `${publicUrl}/${appPath}`;
 }
 
 function getObjectUrl(object, publicUrl) {
-    return `${publicUrl}/${object.extraInfo.appPath}/index.html?id=${object.id}`;
+    const appPathTemplate = object.extraInfo.appPath.object;
+    const namespace = { id: object.id };
+    const appPath = helpers.interpolate(appPathTemplate, namespace);
+    return `${publicUrl}/${appPath}`;
 }
 
 async function userShouldGetNotifications(api, userId, user, interpretationOrComment) {
