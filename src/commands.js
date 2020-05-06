@@ -266,9 +266,8 @@ async function getDataForTriggerEvents(api, triggerEvents) {
     };
 }
 
-async function sendMessagesForEvents(api, cacheKey, options, action) {
-    const { cacheDir, namespace, maxTimeWindow, smtp, assets } = _.defaults(options, {
-        namespace: "notifications",
+async function sendMessagesForEvents(cacheKey, options, action) {
+    const { cacheDir, maxTimeWindow, smtp, assets } = _.defaults(options, {
         maxTimeWindow: [1, "hour"],
         smtp: {},
         assets: {},
@@ -286,7 +285,7 @@ async function sendMessagesForEvents(api, cacheKey, options, action) {
 
     debug(`startDate=${startDate}, endDate=${endDate}`);
     const buckets = helpers.getMonthDatesBetween(startDate, endDate).map(getBucketFromTime);
-    const eventsRepository = new EventsRepository();
+    const eventsRepository = new EventsRepository(cacheDir);
     const eventsInBuckets = buckets.map((bucket) => eventsRepository.get(bucket));
 
     const triggerEvents = _(eventsInBuckets)
@@ -523,7 +522,6 @@ async function getNewslettersMessages(api, triggerEvents, startDate, endDate, op
 
 async function buildNewsletterForUser(i18n, baseNamespace, template, assets, user, events, data) {
     const interpretationEvents = events.filter((event) => event.model === "interpretation");
-    const interpretationIds = new Set(interpretationEvents.map((ev) => ev.interpretationId));
 
     const commentEvents = events.filter(
         (event) => event.model === "comment" && data.interpretations[event.interpretationId]
@@ -623,7 +621,7 @@ async function sendNotifications(argv) {
         assets,
     };
 
-    return sendMessagesForEvents(api, "notifications", triggerOptions, ({ triggerEvents }) =>
+    return sendMessagesForEvents("notifications", triggerOptions, ({ triggerEvents }) =>
         getNotificationMessages(api, triggerEvents, options)
     );
 }
@@ -640,7 +638,6 @@ async function sendNewsletters(argv) {
     };
 
     return sendMessagesForEvents(
-        api,
         "newsletters",
         triggerOptions,
         ({ triggerEvents, startDate, endDate }) =>
