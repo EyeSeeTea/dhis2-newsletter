@@ -1,6 +1,6 @@
 {
     "name": "dhis2-subscriptions",
-    "version": "0.0.5",
+    "version": "0.1.0",
     "description": "Subscription utils for DHIS2 instances",
     "main": "src/cli.js",
     "bin": {

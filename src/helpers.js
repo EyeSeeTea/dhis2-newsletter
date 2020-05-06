@@ -26,6 +26,10 @@ function mapPromise(values, mapper, { concurrency = 1 } = {}) {
     return bluebird.map(values, mapper, { concurrency: concurrency });
 }
 
+function loadConfigOptions(configFile) {
+    return JSON.parse(fileRead(configFile));
+}
+
 function fileRead(path, defaultValue) {
     if (fs.existsSync(path)) {
         return fs.readFileSync(path, "utf8");
@@ -37,13 +41,23 @@ function fileRead(path, defaultValue) {
 }
 
 function fileWrite(path, contents) {
+    ensureDirectoryExistence(path);
     return fs.writeFileSync(path, contents, "utf8");
+}
+
+function ensureDirectoryExistence(filePath) {
+    var dirname = path.dirname(filePath);
+    if (fs.existsSync(dirname)) {
+        return true;
+    }
+    ensureDirectoryExistence(dirname);
+    fs.mkdirSync(dirname);
 }
 
 function sendMessage(api, subject, body, recipients) {
     const recipientsByModel = _(recipients)
         .groupBy("type")
-        .mapValues(models => models.map(model => ({ id: model.id })))
+        .mapValues((models) => models.map((model) => ({ id: model.id })))
         .value();
     const message = {
         subject: subject,
@@ -79,14 +93,14 @@ function loadTranslations(directory) {
     };
 
     return _(fs.readdirSync(directory))
-        .filter(filename => filename.endsWith(".properties"))
-        .map(filename => {
+        .filter((filename) => filename.endsWith(".properties"))
+        .map((filename) => {
             const locale = filename.split(".")[0];
             const obj = properties.parse(fileRead(path.join(directory, filename)));
-            const objWithTemplates = _.mapValues(obj, s => _.template(s, templateSettings));
+            const objWithTemplates = _.mapValues(obj, (s) => _.template(s, templateSettings));
             const t = (key, namespace = {}) =>
                 (objWithTemplates[key] || (() => `**${key}**`))(namespace);
-            const i18nObj = { t, formatDate: date => moment(date).format("L") };
+            const i18nObj = { t, formatDate: (date) => moment(date).format("L") };
 
             return [locale, i18nObj];
         })
@@ -113,26 +127,45 @@ function getNotificationSettings(user) {
     };
 
     const userAttributesValuesByCode = _(user.attributeValues)
-        .map(attributeValue => [attributeValue.attribute.code, attributeValue.value === "true"])
+        .map((attributeValue) => [attributeValue.attribute.code, attributeValue.value === "true"])
         .fromPairs()
         .value();
 
     return _(attributeCodes)
-        .mapValues(attributeCode => userAttributesValuesByCode[attributeCode])
+        .mapValues((attributeCode) => userAttributesValuesByCode[attributeCode])
         .value();
 }
 
 function catchWithDebug(promise, { message, defaultValue }) {
-    return promise.catch(err => {
+    return promise.catch((err) => {
         debug(`ERROR: ${message}: ${err}`);
         return defaultValue;
     });
+}
+
+function dhisDateToISODate(date) {
+    return `${date}Z`;
+}
+
+function isoDateToDhisDate(date) {
+    return date.replace("Z", "");
+}
+
+function toJson(obj) {
+    return JSON.stringify(obj, null, 4) + "\n";
+}
+
+function interpolate(template, namespace) {
+    const names = Object.keys(namespace);
+    const values = Object.values(namespace);
+    return new Function(...names, `return \`${template}\`;`)(...values);
 }
 
 Object.assign(module.exports, {
     debug,
     setDebug,
     mapPromise,
+    loadConfigOptions,
     fileRead,
     fileWrite,
     sendMessage,
@@ -142,4 +175,8 @@ Object.assign(module.exports, {
     promisify,
     getNotificationSettings,
     catchWithDebug,
+    dhisDateToISODate,
+    isoDateToDhisDate,
+    toJson,
+    interpolate,
 });
