@@ -2,12 +2,6 @@
 
 ## Setup
 
-* Install the PostgreSQL triggers that create an event whenever an interpretation/comment is created/edited:
-
-```
-$ cat database/triggers.sql | psql DATABASE_NAME [-U USER]
-```
-
 * Build the assets:
 
 ```
@@ -32,8 +26,11 @@ $ which dhis2-subscriptions
 * Add crontab entries (`crontab -e`) to send notifications and newsletters to subscribers. An example:
 
 ```
-*/5 * * * *   chronic /path/to/bin/dhis2-subscriptions --config-file=/path/to/your/config.json send-notifications
-00  8 * * MON chronic /path/to/bin/dhis2-subscriptions --config-file=/path/to/your/config.json send-newsletters
+*/5 * * * *   chronic /path/to/bin/dhis2-subscriptions generate-events --config-file=/path/to/your/config.json 
+
+*/8 * * * *   chronic /path/to/bin/dhis2-subscriptions send-notifications --config-file=/path/to/your/config.json --ge=true or false
+
+00  8 * * MON chronic /path/to/bin/dhis2-subscriptions send-newsletters --config-file=/path/to/your/config.json --ge=true or false
 ```
 
 ## Configuration file (`config.json`)
@@ -53,8 +50,8 @@ $ which dhis2-subscriptions
     // DHIS2 public URL
     "publicUrl": "http://localhost:8080",
 
-    // Cache file to store timestamp of previous sent operations
-    "cacheFilePath": ".notifications-cache.json",
+    // Cache directory to store all cache files
+    "cacheDir": "./cache",
 
     // DHIS2 Api details
     "api": {
@@ -63,11 +60,6 @@ $ which dhis2-subscriptions
             "username": "admin",
             "password": "district"
         }
-    },
-
-    // DHIS2 dataStore details where events are stored
-    "dataStore": {
-      "namespace": "notifications"
     },
 
     // E-mail footer literals
@@ -89,14 +81,20 @@ $ which dhis2-subscriptions
 
 ## Commands examples
 
-Send emails to subscribers of objects (charts, eventCharts, maps, reportTables, eventReports):
+Detect changes in interpretations and its comments for objects (charts, eventCharts, maps, reportTables, eventReports):
 
 ```
-$ dhis2-subscriptions [-c path/to/config.json] send-notifications
+$ dhis2-subscriptions generate-events [-c path/to/config.json] 
 ```
 
-Send a weekly report of interpretations to subscribers of their parent objects:
+Execute previously the generate events command and send emails to subscribers of objects (charts, eventCharts, maps, reportTables, eventReports):
 
 ```
-$ dhis2-subscriptions [-c path/to/config.json] send-newsletters
+$ dhis2-subscriptions send-notifications [-c path/to/config.json] --ge=true
+```
+
+Execute previously the generate events command and send a weekly report of interpretations to subscribers of their parent objects:
+
+```
+$ dhis2-subscriptions send-newsletters [-c path/to/config.json] --ge=true
 ```

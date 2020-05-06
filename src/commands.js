@@ -12,6 +12,9 @@ const helpers = require("./helpers");
 const { Dhis2Api } = require("./api");
 const { objectsInfo } = require("./objects-info");
 
+const { EventsRepository } = require("./data/eventsRepository");
+const { LastExecutionsRepository } = require("./data/lastExecutionsRepository");
+
 const { promisify, debug, catchWithDebug } = helpers;
 
 const exec = promisify(child_process.exec);
@@ -45,7 +48,7 @@ async function getI18n(api, user, defaultLocale = "en") {
 }
 
 function getObjectFromInterpretation(interpretation) {
-    const matchingInfo = objectsInfo.find(info => info.type === interpretation.type);
+    const matchingInfo = objectsInfo.find((info) => info.type === interpretation.type);
 
     if (!matchingInfo) {
         throw new Error(`Cannot find object type for interpretation ${interpretation.id}`);
@@ -57,12 +60,17 @@ function getObjectFromInterpretation(interpretation) {
 
 function getInterpretationUrl(interpretation, publicUrl) {
     const object = interpretation.object;
-    const { appPath } = object.extraInfo;
-    return `${publicUrl}/${appPath}/index.html?id=${object.id}&interpretationid=${interpretation.id}`;
+    const appPathTemplate = object.extraInfo.appPath.interpretation;
+    const namespace = { id: object.id, interpretationId: interpretation.id };
+    const appPath = helpers.interpolate(appPathTemplate, namespace);
+    return `${publicUrl}/${appPath}`;
 }
 
 function getObjectUrl(object, publicUrl) {
-    return `${publicUrl}/${object.extraInfo.appPath}/index.html?id=${object.id}`;
+    const appPathTemplate = object.extraInfo.appPath.object;
+    const namespace = { id: object.id };
+    const appPath = helpers.interpolate(appPathTemplate, namespace);
+    return `${publicUrl}/${appPath}`;
 }
 
 async function userShouldGetNotifications(api, userId, user, interpretationOrComment) {
@@ -111,7 +119,7 @@ async function getNotificationMessagesForEvent(
 
     const text = interpretationOrComment.text;
     const interpretationUrl = getInterpretationUrl(interpretation, publicUrl);
-    const getMessageForUser = async userId => {
+    const getMessageForUser = async (userId) => {
         const user = usersById[userId];
 
         if (!(await userShouldGetNotifications(api, userId, user, interpretationOrComment))) {
@@ -121,14 +129,14 @@ async function getNotificationMessagesForEvent(
         const i18n = await getI18n(api, user, locale);
 
         const subject = [
-            interpretation.user.displayName,
+            interpretationOrComment.user.displayName,
             i18n.t(`${event.model}_${event.type}`),
         ].join(" ");
 
         const bodyText = [
             [
-                interpretation.user.displayName,
-                `(${interpretation.user.userCredentials.username})`,
+                interpretationOrComment.user.displayName,
+                `(${interpretationOrComment.user.userCredentials.username})`,
                 i18n.t(`${event.model}_${event.type}`),
                 i18n.t("object_subscribed") + ":",
             ].join(" "),
@@ -152,10 +160,10 @@ async function getNotificationMessagesForEvent(
 }
 
 async function getDataForTriggerEvents(api, triggerEvents) {
-    const interpretationIds = triggerEvents.map(event => event.interpretationId);
+    const interpretationIds = triggerEvents.map((event) => event.interpretationId);
     const userField = "user[id,displayName,userCredentials[username]]";
     const objectModelFields = objectsInfo.map(
-        info => `${info.field}[` + ["id", "name", "subscribers", userField].join(",") + "]"
+        (info) => `${info.field}[` + ["id", "name", "subscribers", userField].join(",") + "]"
     );
 
     const { interpretations } =
@@ -176,7 +184,7 @@ async function getDataForTriggerEvents(api, triggerEvents) {
                   ].join(","),
               });
 
-    const interpretationsWithObject = interpretations.map(interpretation => ({
+    const interpretationsWithObject = interpretations.map((interpretation) => ({
         ...interpretation,
         object: getObjectFromInterpretation(interpretation),
     }));
@@ -188,7 +196,7 @@ async function getDataForTriggerEvents(api, triggerEvents) {
         .keyBy("id")
         .value();
 
-    const getEventModel = event => {
+    const getEventModel = (event) => {
         switch (event.model) {
             case "interpretation":
                 return interpretationsByIdWithObject[event.interpretationId];
@@ -201,17 +209,17 @@ async function getDataForTriggerEvents(api, triggerEvents) {
 
     const events = _(triggerEvents)
         // Get only events with existing interpretation and comments
-        .filter(event => interpretationsByIdWithObject[event.interpretationId])
-        .filter(event => !event.commentId || commentsById[event.commentId])
+        .filter((event) => interpretationsByIdWithObject[event.interpretationId])
+        .filter((event) => !event.commentId || commentsById[event.commentId])
         // Take only 1 event over the same interpretation/comment (preference for creation events)
-        .groupBy(event => [event.interpretationId, event.commentId].join("-"))
+        .groupBy((event) => [event.interpretationId, event.commentId].join("-"))
         .map((eventsInGroups, key) =>
             _(eventsInGroups)
-                .sortBy(event => event.type !== "created")
+                .sortBy((event) => event.type !== "created")
                 .first()
         )
         // Build a rich event object
-        .map(event => {
+        .map((event) => {
             const interpretation = interpretationsByIdWithObject[event.interpretationId];
             return {
                 ...event,
@@ -225,8 +233,8 @@ async function getDataForTriggerEvents(api, triggerEvents) {
 
     const userIds = _.uniq(
         _.concat(
-            _.flatMap(events, event => event.object.subscribers),
-            _.flatMap(interpretationsWithObject, interp => interp.object.subscribers)
+            _.flatMap(events, (event) => event.object.subscribers),
+            _.flatMap(interpretationsWithObject, (interp) => interp.object.subscribers)
         )
     );
 
@@ -259,22 +267,17 @@ async function getDataForTriggerEvents(api, triggerEvents) {
 }
 
 async function sendMessagesForEvents(api, cacheKey, options, action) {
-    const { cacheFilePath, namespace, maxTimeWindow, ignoreCache, smtp, assets } = _.defaults(
-        options,
-        {
-            cacheFilePath: ".notifications-cache.json",
-            namespace: "notifications",
-            ignoreCache: false,
-            maxTimeWindow: [1, "hour"],
-            smtp: {},
-            assets: {},
-        }
-    );
-    const cache = JSON.parse(helpers.fileRead(cacheFilePath, JSON.stringify({})));
-    const lastSuccessDate = ignoreCache || !cache[cacheKey] ? null : cache[cacheKey].lastSuccess;
-    const lastEventDateForUserByUser =
-        ignoreCache || !cache[cacheKey] ? {} : cache[cacheKey].users || {};
-    const getBucketFromTime = time => "ev-month-" + time.format("YYYY-MM");
+    const { cacheDir, namespace, maxTimeWindow, smtp, assets } = _.defaults(options, {
+        namespace: "notifications",
+        maxTimeWindow: [1, "hour"],
+        smtp: {},
+        assets: {},
+    });
+    const lastExecutionsRepository = new LastExecutionsRepository(cacheDir);
+    const cache = lastExecutionsRepository.get();
+    const lastSuccessDate = !cache[cacheKey] ? null : cache[cacheKey].lastSuccess;
+    const lastEventDateForUserByUser = !cache[cacheKey] ? {} : cache[cacheKey].users || {};
+    const getBucketFromTime = (time) => "ev-month-" + time.format("YYYY-MM");
     const defaultStartDate = moment().subtract(...maxTimeWindow);
     const startDate = lastSuccessDate
         ? moment.max(moment(lastSuccessDate), defaultStartDate)
@@ -283,12 +286,12 @@ async function sendMessagesForEvents(api, cacheKey, options, action) {
 
     debug(`startDate=${startDate}, endDate=${endDate}`);
     const buckets = helpers.getMonthDatesBetween(startDate, endDate).map(getBucketFromTime);
-    const eventsInBuckets = await helpers.mapPromise(buckets, bucket =>
-        api.get(`/dataStore/${namespace}/${bucket}`).catch(err => [])
-    );
+    const eventsRepository = new EventsRepository();
+    const eventsInBuckets = buckets.map((bucket) => eventsRepository.get(bucket));
+
     const triggerEvents = _(eventsInBuckets)
         .flatten()
-        .filter(event => moment(event.created) >= startDate && moment(event.created) < endDate)
+        .filter((event) => moment(event.created) >= startDate && moment(event.created) < endDate)
         .sortBy("created")
         .value();
 
@@ -296,7 +299,7 @@ async function sendMessagesForEvents(api, cacheKey, options, action) {
 
     const mailer = nodemailer.createTransport(smtp);
     const usersSentWithTimestamp = _.compact(
-        await helpers.mapPromise(messages, message => {
+        await helpers.mapPromise(messages, (message) => {
             const lastEventDateForUser = lastEventDateForUserByUser[message.username];
             const messagePendingToSend =
                 !lastEventDateForUser || message.eventDate > lastEventDateForUser;
@@ -306,14 +309,14 @@ async function sendMessagesForEvents(api, cacheKey, options, action) {
 
             return sendEmail$
                 .then(() => ({ username: message.username, created: message.eventDate }))
-                .catch(err => null);
+                .catch((err) => null);
         })
     );
 
     const success = usersSentWithTimestamp.length === messages.length;
     const usersSent = _(usersSentWithTimestamp)
         .groupBy("username")
-        .mapValues(group =>
+        .mapValues((group) =>
             _(group)
                 .map("created")
                 .max()
@@ -330,7 +333,7 @@ async function sendMessagesForEvents(api, cacheKey, options, action) {
         },
     };
 
-    helpers.fileWrite(cacheFilePath, JSON.stringify(newCache, null, 4) + "\n");
+    lastExecutionsRepository.save(newCache);
 
     if (assets.clean) {
         debug(`Cleanup remote files: ${assets.clean}`);
@@ -390,12 +393,12 @@ async function getObjectVisualization(api, assets, object, date) {
 async function getCachedVisualizationFun(api, assets, events) {
     // Package ejs doesn't support calling async functions, so we preload visualizations beforehand.
     const argsList = _(events)
-        .map(event => ({ object: event.object, date: event.interpretation.created }))
+        .map((event) => ({ object: event.object, date: event.interpretation.created }))
         .uniqWith(_.isEqual)
         .value();
 
     // Build array of objects {args: {object, date}, value: html} for all entries.
-    const cachedEntries = await helpers.mapPromise(argsList, async args => ({
+    const cachedEntries = await helpers.mapPromise(argsList, async (args) => ({
         args: args,
         value: await catchWithDebug(getObjectVisualization(api, assets, args.object, args.date), {
             message: "getObjectVisualization",
@@ -404,7 +407,7 @@ async function getCachedVisualizationFun(api, assets, events) {
     }));
 
     return (object, date) => {
-        const cachedEntry = cachedEntries.find(entry => _.isEqual(entry.args, { object, date }));
+        const cachedEntry = cachedEntries.find((entry) => _.isEqual(entry.args, { object, date }));
 
         if (cachedEntry) {
             return cachedEntry.value;
@@ -443,7 +446,7 @@ function userShouldGetNewsletters(user) {
 }
 
 async function getNewslettersMessages(api, triggerEvents, startDate, endDate, options) {
-    const { dataStore, publicUrl, locale, assets } = options;
+    const { publicUrl, locale, assets } = options;
     const templatePath = path.join(__dirname, "templates/newsletter.ejs");
     const templateStr = fs.readFileSync(templatePath, "utf8");
     const template = ejs.compile(templateStr, { filename: templatePath });
@@ -451,16 +454,16 @@ async function getNewslettersMessages(api, triggerEvents, startDate, endDate, op
     debug(`${data.events.length} events to process`);
 
     const eventsByUsers = _(data.events)
-        .flatMap(event =>
+        .flatMap((event) =>
             _(event.object.subscribers)
                 .toArray()
-                .map(userId => ({ userId, event }))
+                .map((userId) => ({ userId, event }))
                 .value()
         )
         .groupBy("userId")
         .map((objs, userId) => ({
             user: data.users[userId],
-            events: objs.map(obj => obj.event),
+            events: objs.map((obj) => obj.event),
         }))
         .filter(({ user }) => userShouldGetNewsletters(user))
         .value();
@@ -483,14 +486,14 @@ async function getNewslettersMessages(api, triggerEvents, startDate, endDate, op
             assetsUrl: assets.url,
 
             routes: {
-                object: object => getObjectUrl(object, publicUrl),
-                interpretation: interpretation => getInterpretationUrl(interpretation, publicUrl),
+                object: (object) => getObjectUrl(object, publicUrl),
+                interpretation: (interpretation) => getInterpretationUrl(interpretation, publicUrl),
                 //objectImage: object => getObjectImage(object, publicUrl),
             },
             helpers: {
                 _,
                 getObjectVisualization: await getCachedVisualizationFun(api, assets, data.events),
-                getLikes: interpretation => getLikes(i18n, interpretation),
+                getLikes: (interpretation) => getLikes(i18n, interpretation),
             },
         };
 
@@ -519,15 +522,15 @@ async function getNewslettersMessages(api, triggerEvents, startDate, endDate, op
 }
 
 async function buildNewsletterForUser(i18n, baseNamespace, template, assets, user, events, data) {
-    const interpretationEvents = events.filter(event => event.model === "interpretation");
-    const interpretationIds = new Set(interpretationEvents.map(ev => ev.interpretationId));
+    const interpretationEvents = events.filter((event) => event.model === "interpretation");
+    const interpretationIds = new Set(interpretationEvents.map((ev) => ev.interpretationId));
 
     const commentEvents = events.filter(
-        event => event.model === "comment" && data.interpretations[event.interpretationId]
+        (event) => event.model === "comment" && data.interpretations[event.interpretationId]
     );
 
     const interpretationEntries = _(interpretationEvents)
-        .groupBy(event => event.object.id)
+        .groupBy((event) => event.object.id)
         .map((interpretationEventsForObject, objectId) => ({
             model: "interpretation",
             object: data.objects[objectId],
@@ -536,7 +539,7 @@ async function buildNewsletterForUser(i18n, baseNamespace, template, assets, use
         .value();
 
     const commentEntries = _(commentEvents)
-        .groupBy(event => event.interpretation.id)
+        .groupBy((event) => event.interpretation.id)
         .map((commentEventsForInterpretation, interpretationId) => {
             const interpretation = data.interpretations[interpretationId];
             return {
@@ -550,7 +553,7 @@ async function buildNewsletterForUser(i18n, baseNamespace, template, assets, use
 
     const entries = _(interpretationEntries)
         .concat(commentEntries)
-        .sortBy(entry => [entry.object.name, entry.model !== "interpretation"])
+        .sortBy((entry) => [entry.object.name, entry.model !== "interpretation"])
         .value();
 
     const details_title = i18n.t("n_interpretations_and_comments_on_m_favorites", {
@@ -566,10 +569,6 @@ async function buildNewsletterForUser(i18n, baseNamespace, template, assets, use
     return template(namespace);
 }
 
-function loadConfigOptions(configFile) {
-    return JSON.parse(helpers.fileRead(configFile));
-}
-
 async function getNotificationMessages(api, triggerEvents, options) {
     const { publicUrl, locale } = options;
 
@@ -579,7 +578,7 @@ async function getNotificationMessages(api, triggerEvents, options) {
     );
 
     return _.flatten(
-        await helpers.mapPromise(events, event => {
+        await helpers.mapPromise(events, (event) => {
             switch (event.model) {
                 case "interpretation":
                     const interpretation = interpretations[event.interpretationId];
@@ -614,13 +613,11 @@ async function getNotificationMessages(api, triggerEvents, options) {
 /* Main functions */
 
 async function sendNotifications(argv) {
-    const options = loadConfigOptions(argv.configFile);
-    const { api: apiOptions, dataStore, cacheFilePath, smtp, assets } = options;
+    const options = helpers.loadConfigOptions(argv.configFile);
+    const { api: apiOptions, cacheDir, smtp, assets } = options;
     const api = new Dhis2Api(apiOptions);
     const triggerOptions = {
-        cacheFilePath: cacheFilePath,
-        namespace: dataStore.namespace,
-        ignoreCache: argv.ignoreCache,
+        cacheDir,
         maxTimeWindow: [1, "hour"],
         smtp,
         assets,
@@ -632,13 +629,11 @@ async function sendNotifications(argv) {
 }
 
 async function sendNewsletters(argv) {
-    const options = loadConfigOptions(argv.configFile);
-    const { cacheFilePath, dataStore, api: apiOptions, smtp, assets } = options;
+    const options = helpers.loadConfigOptions(argv.configFile);
+    const { cacheDir, api: apiOptions, smtp, assets } = options;
     const api = new Dhis2Api(apiOptions);
     const triggerOptions = {
-        cacheFilePath: cacheFilePath,
-        namespace: dataStore.namespace,
-        ignoreCache: argv.ignoreCache,
+        cacheDir: cacheDir,
         maxTimeWindow: [7, "days"],
         smtp,
         assets,
