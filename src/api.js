@@ -36,7 +36,7 @@ class Dhis2Api {
             ...options,
         });
 
-        return response$.then(res => {
+        return response$.then((res) => {
             debug(`Response size: ${JSON.stringify(res).length}`);
             return res;
         });

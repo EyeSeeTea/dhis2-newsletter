@@ -155,6 +155,12 @@ function toJson(obj) {
     return JSON.stringify(obj, null, 4) + "\n";
 }
 
+function interpolate(template, namespace) {
+    const names = Object.keys(namespace);
+    const values = Object.values(namespace);
+    return new Function(...names, `return \`${template}\`;`)(...values);
+}
+
 Object.assign(module.exports, {
     debug,
     setDebug,
@@ -172,4 +178,5 @@ Object.assign(module.exports, {
     dhisDateToISODate,
     isoDateToDhisDate,
     toJson,
+    interpolate,
 });

@@ -60,8 +60,10 @@ function getObjectFromInterpretation(interpretation) {
 
 function getInterpretationUrl(interpretation, publicUrl) {
     const object = interpretation.object;
-    const { appPath } = object.extraInfo;
-    return `${publicUrl}/${appPath}/index.html?id=${object.id}&interpretationid=${interpretation.id}`;
+    const { appPath: appPathTemplate } = object.extraInfo;
+    const namespace = { id: object.id, interpretationId: interpretation.id };
+    const appPath = helpers.interpolate(appPathTemplate, namespace);
+    return `${publicUrl}/${appPath}`;
 }
 
 function getObjectUrl(object, publicUrl) {
