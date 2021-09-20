@@ -15,8 +15,7 @@ const objectsInfo = [
         field: "visualization",
         appPath: {
             object: "dhis-web-data-visualizer/#/${id}",
-            interpretation:
-                "dhis-web-data-visualizer/#/${id}/interpretation/${interpretationId}",
+            interpretation: "dhis-web-data-visualizer/#/${id}/interpretation/${interpretationId}",
         },
         apiModel: "visualizations",
         visualizationType: "visualization",
@@ -26,8 +25,7 @@ const objectsInfo = [
         field: "visualization",
         appPath: {
             object: "dhis-web-data-visualizer/#/${id}",
-            interpretation:
-                "dhis-web-data-visualizer/#/${id}/interpretation/${interpretationId}",
+            interpretation: "dhis-web-data-visualizer/#/${id}/interpretation/${interpretationId}",
         },
         apiModel: "charts",
         visualizationType: "image",
@@ -37,8 +35,7 @@ const objectsInfo = [
         field: "visualization",
         appPath: {
             object: "dhis-web-data-visualizer/#/${id}",
-            interpretation:
-                "dhis-web-data-visualizer/#/${id}/interpretation/${interpretationId}",
+            interpretation: "dhis-web-data-visualizer/#/${id}/interpretation/${interpretationId}",
         },
         apiModel: "reportTables",
         visualizationType: "html",
