@@ -11,26 +11,37 @@ const objectsInfo = [
         apiModel: "maps",
     },
     {
-        type: "REPORT_TABLE",
-        field: "reportTable",
+        type: "VISUALIZATION",
+        field: "visualization",
         appPath: {
-            object: "dhis-web-pivot/index.html?id=${id}",
+            object: "dhis-web-data-visualizer/#/${id}",
             interpretation:
-                "dhis-web-pivot/index.html?id=${id}&interpretationid=${interpretationId}",
+                "dhis-web-data-visualizer/#/${id}/interpretation/${interpretationId}",
         },
-        apiModel: "reportTables",
-        visualizationType: "html",
+        apiModel: "visualizations",
+        visualizationType: "visualization",
     },
     {
         type: "CHART",
-        field: "chart",
+        field: "visualization",
         appPath: {
-            object: "dhis-web-data-visualizer/index.html#/${id}",
+            object: "dhis-web-data-visualizer/#/${id}",
             interpretation:
-                "dhis-web-data-visualizer/index.html#/${id}/interpretation/${interpretationId}",
+                "dhis-web-data-visualizer/#/${id}/interpretation/${interpretationId}",
         },
         apiModel: "charts",
         visualizationType: "image",
+    },
+    {
+        type: "REPORT_TABLE",
+        field: "visualization",
+        appPath: {
+            object: "dhis-web-data-visualizer/#/${id}",
+            interpretation:
+                "dhis-web-data-visualizer/#/${id}/interpretation/${interpretationId}",
+        },
+        apiModel: "reportTables",
+        visualizationType: "html",
     },
     {
         type: "EVENT_REPORT",

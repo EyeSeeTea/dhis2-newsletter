@@ -51,7 +51,7 @@ function getObjectFromInterpretation(interpretation) {
     const matchingInfo = objectsInfo.find((info) => info.type === interpretation.type);
 
     if (!matchingInfo) {
-        throw new Error(`Cannot find object type for interpretation ${interpretation.id}`);
+        throw new Error(`Cannot find object type for interpretation ${interpretation.id} (type=${interpretation.type})`);
     } else {
         const object = interpretation[matchingInfo.field];
         return { ...object, extraInfo: matchingInfo };
@@ -163,7 +163,7 @@ async function getDataForTriggerEvents(api, triggerEvents) {
     const interpretationIds = triggerEvents.map((event) => event.interpretationId);
     const userField = "user[id,displayName,userCredentials[username]]";
     const objectModelFields = objectsInfo.map(
-        (info) => `${info.field}[` + ["id", "name", "subscribers", userField].join(",") + "]"
+        (info) => `${info.field}[` + ["id", "name", "subscribers", "type", userField].join(",") + "]"
     );
 
     const { interpretations } =
@@ -382,6 +382,13 @@ async function getObjectVisualization(api, assets, object, date) {
             return `<div style="display: block; overflow: auto; height: ${height}px">${tableHtml}</div>`;
         case "none":
             return "";
+        case "visualization":
+            // A visualization may be an HTML table (type=PIVOT_TABLE), otherwise it's a chart image.
+            const extraInfoUpdate = object.type === "PIVOT_TABLE"
+                ? { apiModel: "reportTables", visualizationType: "html" }
+                : { apiModel: "charts", visualizationType: "image" }
+            const object2 = { ...object, extraInfo: { ...object.extraInfo, ...extraInfoUpdate } }
+            return getObjectVisualization(api, assets, object2, date)
         default:
             throw new Error(
                 `Unsupported visualization type: ${object.extraInfo.visualizationType}`
