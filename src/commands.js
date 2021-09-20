@@ -136,7 +136,7 @@ async function getNotificationMessagesForEvent(
         const bodyText = [
             [
                 interpretationOrComment.user.displayName,
-                `(${interpretationOrComment.user.userCredentials.username})`,
+                `(${interpretationOrComment.user.username})`,
                 i18n.t(`${event.model}_${event.type}`),
                 i18n.t("object_subscribed") + ":",
             ].join(" "),
@@ -161,7 +161,7 @@ async function getNotificationMessagesForEvent(
 
 async function getDataForTriggerEvents(api, triggerEvents) {
     const interpretationIds = triggerEvents.map((event) => event.interpretationId);
-    const userField = "user[id,displayName,userCredentials[username]]";
+    const userField = "user[id,displayName,username]";
     const objectModelFields = objectsInfo.map(
         (info) => `${info.field}[` + ["id", "name", "subscribers", "type", userField].join(",") + "]"
     );
