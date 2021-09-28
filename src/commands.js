@@ -51,7 +51,9 @@ function getObjectFromInterpretation(interpretation) {
     const matchingInfo = objectsInfo.find((info) => info.type === interpretation.type);
 
     if (!matchingInfo) {
-        throw new Error(`Cannot find object type for interpretation ${interpretation.id}`);
+        throw new Error(
+            `Cannot find object type for interpretation ${interpretation.id} (type=${interpretation.type})`
+        );
     } else {
         const object = interpretation[matchingInfo.field];
         return { ...object, extraInfo: matchingInfo };
@@ -136,7 +138,7 @@ async function getNotificationMessagesForEvent(
         const bodyText = [
             [
                 interpretationOrComment.user.displayName,
-                `(${interpretationOrComment.user.userCredentials.username})`,
+                `(${interpretationOrComment.user.username})`,
                 i18n.t(`${event.model}_${event.type}`),
                 i18n.t("object_subscribed") + ":",
             ].join(" "),
@@ -161,9 +163,10 @@ async function getNotificationMessagesForEvent(
 
 async function getDataForTriggerEvents(api, triggerEvents) {
     const interpretationIds = triggerEvents.map((event) => event.interpretationId);
-    const userField = "user[id,displayName,userCredentials[username]]";
+    const userField = "user[id,displayName,username]";
     const objectModelFields = objectsInfo.map(
-        (info) => `${info.field}[` + ["id", "name", "subscribers", userField].join(",") + "]"
+        (info) =>
+            `${info.field}[` + ["id", "name", "subscribers", "type", userField].join(",") + "]"
     );
 
     const { interpretations } =
@@ -266,9 +269,8 @@ async function getDataForTriggerEvents(api, triggerEvents) {
     };
 }
 
-async function sendMessagesForEvents(api, cacheKey, options, action) {
-    const { cacheDir, namespace, maxTimeWindow, smtp, assets } = _.defaults(options, {
-        namespace: "notifications",
+async function sendMessagesForEvents(cacheKey, options, action) {
+    const { cacheDir, maxTimeWindow, smtp, assets } = _.defaults(options, {
         maxTimeWindow: [1, "hour"],
         smtp: {},
         assets: {},
@@ -286,7 +288,7 @@ async function sendMessagesForEvents(api, cacheKey, options, action) {
 
     debug(`startDate=${startDate}, endDate=${endDate}`);
     const buckets = helpers.getMonthDatesBetween(startDate, endDate).map(getBucketFromTime);
-    const eventsRepository = new EventsRepository();
+    const eventsRepository = new EventsRepository(cacheDir);
     const eventsInBuckets = buckets.map((bucket) => eventsRepository.get(bucket));
 
     const triggerEvents = _(eventsInBuckets)
@@ -383,6 +385,14 @@ async function getObjectVisualization(api, assets, object, date) {
             return `<div style="display: block; overflow: auto; height: ${height}px">${tableHtml}</div>`;
         case "none":
             return "";
+        case "visualization":
+            // A visualization may be an HTML table (type=PIVOT_TABLE), otherwise it's a chart image.
+            const extraInfoUpdate =
+                object.type === "PIVOT_TABLE"
+                    ? { apiModel: "reportTables", visualizationType: "html" }
+                    : { apiModel: "charts", visualizationType: "image" };
+            const object2 = { ...object, extraInfo: { ...object.extraInfo, ...extraInfoUpdate } };
+            return getObjectVisualization(api, assets, object2, date);
         default:
             throw new Error(
                 `Unsupported visualization type: ${object.extraInfo.visualizationType}`
@@ -523,7 +533,6 @@ async function getNewslettersMessages(api, triggerEvents, startDate, endDate, op
 
 async function buildNewsletterForUser(i18n, baseNamespace, template, assets, user, events, data) {
     const interpretationEvents = events.filter((event) => event.model === "interpretation");
-    const interpretationIds = new Set(interpretationEvents.map((ev) => ev.interpretationId));
 
     const commentEvents = events.filter(
         (event) => event.model === "comment" && data.interpretations[event.interpretationId]
@@ -623,7 +632,7 @@ async function sendNotifications(argv) {
         assets,
     };
 
-    return sendMessagesForEvents(api, "notifications", triggerOptions, ({ triggerEvents }) =>
+    return sendMessagesForEvents("notifications", triggerOptions, ({ triggerEvents }) =>
         getNotificationMessages(api, triggerEvents, options)
     );
 }
@@ -640,7 +649,6 @@ async function sendNewsletters(argv) {
     };
 
     return sendMessagesForEvents(
-        api,
         "newsletters",
         triggerOptions,
         ({ triggerEvents, startDate, endDate }) =>
