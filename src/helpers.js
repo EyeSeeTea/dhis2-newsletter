@@ -156,8 +156,8 @@ function toJson(obj) {
 }
 
 function interpolate(template, namespace) {
-    const names = Object.keys(namespace);
-    const values = Object.values(namespace);
+    const names = _.keys(namespace);
+    const values = _.values(namespace);
     return new Function(...names, `return \`${template}\`;`)(...values);
 }
 
