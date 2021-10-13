@@ -107,7 +107,7 @@ const generateEditedCommentsEvents = (cachedInterpretations, interpretationsChan
         return {
             type: "update",
             model: "comment",
-            created: helpers.dhisDateToISODate(comment.interpretationLastUpdated),
+            created: helpers.dhisDateToISODate(comment.lastUpdated),
             commentId: comment.id,
             interpretationId: comment.interpretationId,
         };
